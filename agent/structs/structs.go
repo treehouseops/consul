@@ -67,6 +67,7 @@ const (
 	ACLAuthMethodSetRequestType                 = 27
 	ACLAuthMethodDeleteRequestType              = 28
 	ChunkingStateType                           = 29
+	DatacenterConfigRequestType                 = 30
 )
 
 const (

@@ -210,7 +210,7 @@ func TestCatalogNodes_WanTranslation(t *testing.T) {
 
 	// Wait for the WAN join.
 	addr := fmt.Sprintf("127.0.0.1:%d", a1.Config.SerfPortWAN)
-	if _, err := a2.JoinWAN([]string{addr}); err != nil {
+	if _, err := a2.JoinWAN([]string{a1.Config.WANNodeName() + "/" + addr}); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	testrpc.WaitForLeader(t, a1.RPC, "dc1")
@@ -826,7 +826,7 @@ func TestCatalogServiceNodes_WanTranslation(t *testing.T) {
 
 	// Wait for the WAN join.
 	addr := fmt.Sprintf("127.0.0.1:%d", a1.Config.SerfPortWAN)
-	_, err := a2.srv.agent.JoinWAN([]string{addr})
+	_, err := a2.srv.agent.JoinWAN([]string{a1.Config.WANNodeName() + "/" + addr})
 	require.NoError(t, err)
 	retry.Run(t, func(r *retry.R) {
 		require.Len(r, a1.WANMembers(), 2)
@@ -1203,7 +1203,7 @@ func TestCatalogNodeServices_WanTranslation(t *testing.T) {
 
 	// Wait for the WAN join.
 	addr := fmt.Sprintf("127.0.0.1:%d", a1.Config.SerfPortWAN)
-	_, err := a2.srv.agent.JoinWAN([]string{addr})
+	_, err := a2.srv.agent.JoinWAN([]string{a1.Config.WANNodeName() + "/" + addr})
 	require.NoError(t, err)
 	retry.Run(t, func(r *retry.R) {
 		require.Len(r, a1.WANMembers(), 2)

@@ -328,6 +328,10 @@ func (s *Server) establishLeadership() error {
 
 	s.startConfigReplication()
 
+	s.startDatacenterConfigReplication()
+
+	s.startDatacenterConfigAntiEntropy()
+
 	s.startConnectLeader()
 
 	s.setConsistentReadReady()
@@ -345,6 +349,10 @@ func (s *Server) revokeLeadership() {
 	s.clearAllSessionTimers()
 
 	s.revokeEnterpriseLeadership()
+
+	s.stopDatacenterConfigAntiEntropy()
+
+	s.stopDatacenterConfigReplication()
 
 	s.stopConfigReplication()
 
@@ -911,6 +919,20 @@ func (s *Server) stopConfigReplication() {
 	s.leaderRoutineManager.Stop(configReplicationRoutineName)
 }
 
+func (s *Server) startDatacenterConfigReplication() {
+	if s.config.PrimaryDatacenter == "" || s.config.PrimaryDatacenter == s.config.Datacenter {
+		// replication shouldn't run in the primary DC
+		return
+	}
+
+	s.leaderRoutineManager.Start(datacenterConfigReplicationRoutineName, s.datacenterConfigReplicator.Run)
+}
+
+func (s *Server) stopDatacenterConfigReplication() {
+	// will be a no-op when not started
+	s.leaderRoutineManager.Stop(datacenterConfigReplicationRoutineName)
+}
+
 // getOrCreateAutopilotConfig is used to get the autopilot config, initializing it if necessary
 func (s *Server) getOrCreateAutopilotConfig() *autopilot.Config {
 	state := s.fsm.State()
@@ -1111,6 +1133,7 @@ func (s *Server) handleAliveMember(member serf.Member) error {
 	// Register consul service if a server
 	var service *structs.NodeService
 	if valid, parts := metadata.IsConsulServer(member); valid {
+
 		service = &structs.NodeService{
 			ID:      structs.ConsulServiceID,
 			Service: structs.ConsulServiceName,
@@ -1127,7 +1150,6 @@ func (s *Server) handleAliveMember(member serf.Member) error {
 				"version":               parts.Build.String(),
 			},
 		}
-
 		// Attempt to join the consul server
 		if err := s.joinConsulServer(member, parts); err != nil {
 			return err

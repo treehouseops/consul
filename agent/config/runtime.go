@@ -569,6 +569,9 @@ type RuntimeConfig struct {
 	// ConnectCAConfig is the config to use for the CA provider.
 	ConnectCAConfig map[string]interface{}
 
+	// TODO
+	ConnectMeshGatewayWANFederationEnabled bool
+
 	// ConnectTestCALeafRootChangeSpread is used to control how long the CA leaf
 	// cache with spread CSRs over when a root change occurs. For now we don't
 	// expose this in public config intentionally but could later with a rename.
@@ -907,6 +910,22 @@ type RuntimeConfig struct {
 	// hcl: primary_datacenter = string
 	PrimaryDatacenter string
 
+	// PrimaryGateways is a list of addresses and/or go-discover expressions to
+	// discovery the mesh gateways in the primary datacenter. See
+	// https://www.consul.io/docs/agent/options.html#cloud-auto-joining for
+	// details.
+	//
+	// hcl: primary_gateways = []string
+	// flag: -primary-gateways string -primary-gateways string
+	PrimaryGateways []string
+
+	// PrimaryGatewaysInterval specifies the amount of time to wait in between discovery
+	// attempts on agent start. The minimum allowed value is 1 second and
+	// the default is 30s.
+	//
+	// hcl: primary_gateways_interval = "duration"
+	PrimaryGatewaysInterval time.Duration
+
 	// RPCAdvertiseAddr is the TCP address Consul advertises for its RPC endpoint.
 	// By default this is the bind address on the default RPC Server port. If the
 	// advertise address is specified then it is used.
@@ -1007,7 +1026,7 @@ type RuntimeConfig struct {
 	// attempts on agent start. The minimum allowed value is 1 second and
 	// the default is 30s.
 	//
-	// hcl: retry_join = "duration"
+	// hcl: retry_interval = "duration"
 	RetryJoinIntervalLAN time.Duration
 
 	// RetryJoinIntervalWAN specifies the amount of time to wait in between join
@@ -1504,6 +1523,10 @@ type RuntimeConfig struct {
 	Watches []map[string]interface{}
 
 	EnterpriseRuntimeConfig
+}
+
+func (c *RuntimeConfig) WANNodeName() string {
+	return fmt.Sprintf("%s.%s", c.NodeName, c.Datacenter)
 }
 
 func (c *RuntimeConfig) apiAddresses(maxPerType int) (unixAddrs, httpAddrs, httpsAddrs []string) {
