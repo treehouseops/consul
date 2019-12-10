@@ -45,8 +45,12 @@ func (a *Agent) retryJoinWAN() {
 
 		// Then "retry join" a special address via the gateway which is
 		// load balanced to all servers in the primary datacenter
+		//
+		// Since this address is merely a placeholder we use an address from the
+		// TEST-NET-1 block as described in https://tools.ietf.org/html/rfc5735#section-3
+		const placeholderIPAddress = "192.0.2.2"
 		joinAddrs = []string{
-			fmt.Sprintf("*.%s/127.0.0.1", a.config.PrimaryDatacenter), // TODO: surely we can have better syntax
+			fmt.Sprintf("*.%s/%s", a.config.PrimaryDatacenter, placeholderIPAddress),
 		}
 	} else {
 		joinAddrs = a.config.RetryJoinWAN
