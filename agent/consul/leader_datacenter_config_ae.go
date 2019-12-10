@@ -95,7 +95,8 @@ func (s *Server) fetchDatacenterConfigAntiEntropyDetails(
 			}
 
 			// Fetch our current list of all mesh gateways.
-			idx2, raw, err := state.ServiceDump(ws, structs.ServiceKindMeshGateway, true)
+			entMeta := structs.WildcardEnterpriseMeta()
+			idx2, raw, err := state.ServiceDump(ws, structs.ServiceKindMeshGateway, true, entMeta)
 			if err != nil {
 				return err
 			}
