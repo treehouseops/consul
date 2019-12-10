@@ -538,7 +538,7 @@ func (c *Configurator) ServerSNI(dc, nodeName string) string {
 	// Strip the trailing '.' from the domain if any
 	domain := strings.TrimSuffix(c.domain(), ".")
 
-	if nodeName == "" {
+	if nodeName == "" || nodeName == "*" {
 		return "server." + dc + "." + domain
 	}
 

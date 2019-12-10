@@ -178,7 +178,7 @@ func (s *Server) endpointsFromSnapshotMeshGateway(cfgSnap *proxycfg.ConfigSnapsh
 			resources = append(resources, la)
 		}
 
-		if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil {
+		if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil && dc != cfgSnap.Datacenter {
 			clusterName := cfgSnap.ServerSNIFn(dc, "")
 
 			la := makeLoadAssignment(
@@ -195,27 +195,41 @@ func (s *Server) endpointsFromSnapshotMeshGateway(cfgSnap *proxycfg.ConfigSnapsh
 	if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil {
 		// generate endpoints for our servers
 
+		var allServersLbEndpoints []envoyendpoint.LbEndpoint
+
 		for _, srv := range cfgSnap.MeshGateway.ConsulServers {
 			clusterName := cfgSnap.ServerSNIFn(cfgSnap.Datacenter, srv.Node.Node)
 
 			addr, port := srv.BestAddress(false /*wan*/)
 
+			lbEndpoint := envoyendpoint.LbEndpoint{
+				HostIdentifier: &envoyendpoint.LbEndpoint_Endpoint{
+					Endpoint: &envoyendpoint.Endpoint{
+						Address: makeAddressPtr(addr, port),
+					},
+				},
+				HealthStatus: envoycore.HealthStatus_UNKNOWN,
+			}
+
 			cla := &envoy.ClusterLoadAssignment{
 				ClusterName: clusterName,
 				Endpoints: []envoyendpoint.LocalityLbEndpoints{{
-					LbEndpoints: []envoyendpoint.LbEndpoint{{
-						HostIdentifier: &envoyendpoint.LbEndpoint_Endpoint{
-							Endpoint: &envoyendpoint.Endpoint{
-								Address: makeAddressPtr(addr, port),
-							},
-						},
-						HealthStatus: envoycore.HealthStatus_UNKNOWN,
-					}},
+					LbEndpoints: []envoyendpoint.LbEndpoint{lbEndpoint},
 				}},
 			}
+			allServersLbEndpoints = append(allServersLbEndpoints, lbEndpoint)
 
 			resources = append(resources, cla)
 		}
+
+		// And add one catch all so that remote datacenters can dial ANY server
+		// in this datacenter without knowing its name.
+		resources = append(resources, &envoy.ClusterLoadAssignment{
+			ClusterName: cfgSnap.ServerSNIFn(cfgSnap.Datacenter, ""),
+			Endpoints: []envoyendpoint.LocalityLbEndpoints{{
+				LbEndpoints: allServersLbEndpoints,
+			}},
+		})
 	}
 
 	// generate the endpoints for the local service groups

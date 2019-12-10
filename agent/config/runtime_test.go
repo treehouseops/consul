@@ -2943,6 +2943,58 @@ func TestConfigFlagsAndEdgecases(t *testing.T) {
 			},
 		},
 		{
+			desc: "connect.enable_mesh_gateway_wan_federation cannot use -join-wan",
+			args: []string{
+				`-data-dir=` + dataDir,
+				`-join-wan=1.2.3.4`,
+			},
+			json: []string{`{
+			  "server": true,
+			  "primary_datacenter": "one",
+			  "datacenter": "one",
+			  "connect": {
+				"enabled": true,
+				"enable_mesh_gateway_wan_federation": true
+			  }
+			}`},
+			hcl: []string{`
+			  server = true
+			  primary_datacenter = "one"
+			  datacenter = "one"
+			  connect {
+			    enabled = true
+			    enable_mesh_gateway_wan_federation = true
+			  }
+			`},
+			err: "'start_join_wan' is incompatible with 'connect.enable_mesh_gateway_wan_federation = true'",
+		},
+		{
+			desc: "connect.enable_mesh_gateway_wan_federation cannot use -retry-join-wan",
+			args: []string{
+				`-data-dir=` + dataDir,
+				`-retry-join-wan=1.2.3.4`,
+			},
+			json: []string{`{
+			  "server": true,
+			  "primary_datacenter": "one",
+			  "datacenter": "one",
+			  "connect": {
+				"enabled": true,
+				"enable_mesh_gateway_wan_federation": true
+			  }
+			}`},
+			hcl: []string{`
+			  server = true
+			  primary_datacenter = "one"
+			  datacenter = "one"
+			  connect {
+			    enabled = true
+			    enable_mesh_gateway_wan_federation = true
+			  }
+			`},
+			err: "'retry_join_wan' is incompatible with 'connect.enable_mesh_gateway_wan_federation = true'",
+		},
+		{
 			desc: "connect.enable_mesh_gateway_wan_federation requires server mode",
 			args: []string{
 				`-data-dir=` + dataDir,
@@ -3019,6 +3071,45 @@ func TestConfigFlagsAndEdgecases(t *testing.T) {
 			  primary_gateways = [ "foo.local", "bar.local" ]
 			`},
 			err: "'primary_gateways' should only be configured in a secondary datacenter",
+		},
+		{
+			desc: "connect.enable_mesh_gateway_wan_federation in secondary with primary_gateways configured",
+			args: []string{
+				`-data-dir=` + dataDir,
+			},
+			json: []string{`{
+			  "server": true,
+			  "primary_datacenter": "one",
+			  "datacenter": "two",
+			  "primary_gateways": [ "foo.local", "bar.local" ],
+			  "connect": {
+				"enabled": true,
+				"enable_mesh_gateway_wan_federation": true
+			  }
+			}`},
+			hcl: []string{`
+			  server = true
+			  primary_datacenter = "one"
+			  datacenter = "two"
+			  primary_gateways = [ "foo.local", "bar.local" ]
+			  connect {
+			    enabled = true
+			    enable_mesh_gateway_wan_federation = true
+			  }
+			`},
+			patch: func(rt *RuntimeConfig) {
+				rt.DataDir = dataDir
+				rt.Datacenter = "two"
+				rt.PrimaryDatacenter = "one"
+				rt.ACLDatacenter = "one"
+				rt.PrimaryGateways = []string{"foo.local", "bar.local"}
+				rt.ConnectEnabled = true
+				rt.ConnectMeshGatewayWANFederationEnabled = true
+				// server things
+				rt.ServerMode = true
+				rt.LeaveOnTerm = false
+				rt.SkipLeaveOnInt = true
+			},
 		},
 
 		// ------------------------------------------------------------
@@ -3902,7 +3993,7 @@ func TestFullConfig(t *testing.T) {
 					"csr_max_per_second": 100,
 					"csr_max_concurrent": 2
 				},
-				"enable_mesh_gateway_wan_federation": true,
+				"enable_mesh_gateway_wan_federation": false,
 				"enabled": true
 			},
 			"gossip_lan" : {
@@ -4509,7 +4600,7 @@ func TestFullConfig(t *testing.T) {
 					csr_max_per_second = 100.0
 					csr_max_concurrent = 2.0
 				}
-				enable_mesh_gateway_wan_federation = true
+				enable_mesh_gateway_wan_federation = false
 				enabled = true
 			}
 			gossip_lan {
@@ -5224,7 +5315,7 @@ func TestFullConfig(t *testing.T) {
 			"CSRMaxPerSecond":     float64(100),
 			"CSRMaxConcurrent":    float64(2),
 		},
-		ConnectMeshGatewayWANFederationEnabled: true,
+		ConnectMeshGatewayWANFederationEnabled: false,
 		DNSAddrs:                               []net.Addr{tcpAddr("93.95.95.81:7001"), udpAddr("93.95.95.81:7001")},
 		DNSARecordLimit:                        29907,
 		DNSAllowStale:                          true,

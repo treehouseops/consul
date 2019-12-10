@@ -26,22 +26,36 @@ func (a *Agent) retryJoinLAN() {
 	}
 }
 
-func (a *Agent) retryJoinWAN(primary bool) {
+func (a *Agent) retryJoinWAN() {
 	if !a.config.ServerMode {
 		a.logger.Printf("[WARN] agent: (WAN) couldn't join: Err: Must be a server to join WAN cluster")
 		return
 	}
 
-	if !primary && a.config.ConnectEnabled && a.config.ConnectMeshGatewayWANFederationEnabled {
+	isPrimary := a.config.PrimaryDatacenter == a.config.Datacenter
+
+	var joinAddrs []string
+	if a.config.ConnectMeshGatewayWANFederationEnabled {
+		if isPrimary {
+			return // secondaries join to the primary but not the other way around
+		}
+
+		// First get a handle on dialing the primary
 		a.refreshPrimaryGatewayFallbackAddresses()
+
+		// Then "retry join" a special address via the gateway which is
+		// load balanced to all servers in the primary datacenter
+		joinAddrs = []string{
+			fmt.Sprintf("*.%s/127.0.0.1", a.config.PrimaryDatacenter), // TODO: surely we can have better syntax
+		}
+	} else {
+		joinAddrs = a.config.RetryJoinWAN
 	}
 
-	// TODO: how to intersect go-discover with the gateway stuff? Maybe we change this to use a composite syntax
-	// TODO: how to force a rejoin after it accidentally just joins itself?
 	r := &retryJoiner{
 		variant:     retryJoinSerfVariant,
 		cluster:     "WAN",
-		addrs:       a.config.RetryJoinWAN,
+		addrs:       joinAddrs,
 		maxAttempts: a.config.RetryJoinMaxAttemptsWAN,
 		interval:    a.config.RetryJoinIntervalWAN,
 		join:        a.JoinWAN,

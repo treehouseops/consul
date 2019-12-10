@@ -1128,6 +1128,14 @@ func (b *Builder) Validate(rt RuntimeConfig) error {
 	if rt.ConnectMeshGatewayWANFederationEnabled && strings.ContainsAny(rt.NodeName, "/") {
 		return fmt.Errorf("'connect.enable_mesh_gateway_wan_federation = true' requires that 'node_name' not contain '/' characters")
 	}
+	if rt.ConnectMeshGatewayWANFederationEnabled {
+		if len(rt.StartJoinAddrsWAN) > 0 {
+			return fmt.Errorf("'start_join_wan' is incompatible with 'connect.enable_mesh_gateway_wan_federation = true'")
+		}
+		if len(rt.RetryJoinWAN) > 0 {
+			return fmt.Errorf("'retry_join_wan' is incompatible with 'connect.enable_mesh_gateway_wan_federation = true'")
+		}
+	}
 	if len(rt.PrimaryGateways) > 0 {
 		if !rt.ServerMode {
 			return fmt.Errorf("'primary_gateways' requires 'server = true'")
@@ -1135,7 +1143,6 @@ func (b *Builder) Validate(rt RuntimeConfig) error {
 		if rt.PrimaryDatacenter == rt.Datacenter {
 			return fmt.Errorf("'primary_gateways' should only be configured in a secondary datacenter")
 		}
-		// TODO: require(?) 'connect.enable_mesh_gateway_wan_federation = true'
 	}
 
 	// Check the data dir for signs of an un-migrated Consul 0.5.x or older

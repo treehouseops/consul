@@ -547,7 +547,7 @@ func (a *Agent) Start() error {
 	// start retry join
 	go a.retryJoinLAN()
 	if a.config.ServerMode {
-		go a.retryJoinWAN(a.config.PrimaryDatacenter == a.config.Datacenter)
+		go a.retryJoinWAN()
 	}
 
 	return nil
