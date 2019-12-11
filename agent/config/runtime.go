@@ -1033,7 +1033,7 @@ type RuntimeConfig struct {
 	// attempts on agent start. The minimum allowed value is 1 second and
 	// the default is 30s.
 	//
-	// hcl: retry_join_wan = "duration"
+	// hcl: retry_interval_wan = "duration"
 	RetryJoinIntervalWAN time.Duration
 
 	// RetryJoinLAN is a list of addresses and/or go-discover expressions to
