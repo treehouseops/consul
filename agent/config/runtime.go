@@ -1525,10 +1525,6 @@ type RuntimeConfig struct {
 	EnterpriseRuntimeConfig
 }
 
-func (c *RuntimeConfig) WANNodeName() string {
-	return fmt.Sprintf("%s.%s", c.NodeName, c.Datacenter)
-}
-
 func (c *RuntimeConfig) apiAddresses(maxPerType int) (unixAddrs, httpAddrs, httpsAddrs []string) {
 	if len(c.HTTPSAddrs) > 0 {
 		for i, addr := range c.HTTPSAddrs {
