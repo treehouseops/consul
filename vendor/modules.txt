@@ -151,6 +151,8 @@ github.com/google/btree
 github.com/google/go-querystring/query
 # github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 github.com/google/gofuzz
+# github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
+github.com/google/tcpproxy
 # github.com/googleapis/gnostic v0.2.0
 github.com/googleapis/gnostic/OpenAPIv2
 github.com/googleapis/gnostic/compiler

@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/tcpproxy"
 	"github.com/hashicorp/consul/agent/connect/ca"
+	"github.com/hashicorp/consul/ipaddr"
 
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/agent/metadata"
@@ -432,45 +434,137 @@ func TestServer_LANReap(t *testing.T) {
 func TestServer_JoinWAN_viaMeshGateway(t *testing.T) {
 	// t.Parallel()
 
+	gwPort := freeport.MustTake(1)
+	defer freeport.Return(gwPort)
+	gwAddr := ipaddr.FormatAddressPort("127.0.0.1", gwPort[0])
+
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.Domain = "consul"
 		c.NodeName = "bob"
 		c.Datacenter = "dc1"
 		c.PrimaryDatacenter = "dc1"
 		c.Bootstrap = true
 		// tls
-		c.CAFile = "../test/hostname/CertAuth.crt"
-		c.CertFile = "../test/hostname/Bob.crt"
-		c.KeyFile = "../test/hostname/Bob.key"
+		c.CAFile = "../../test/hostname/CertAuth.crt"
+		c.CertFile = "../../test/hostname/Bob.crt"
+		c.KeyFile = "../../test/hostname/Bob.key"
 		c.VerifyIncoming = true
 		c.VerifyOutgoing = true
 		c.VerifyServerHostname = true
 		// wanfed
-		c.ConnectEnabled = true
 		c.ConnectMeshGatewayWANFederationEnabled = true
 	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
 
 	dir2, s2 := testServerWithConfig(t, func(c *Config) {
+		c.Domain = "consul"
 		c.NodeName = "betty"
 		c.Datacenter = "dc2"
 		c.PrimaryDatacenter = "dc1"
 		c.Bootstrap = true
 		// tls
-		c.CAFile = "../test/hostname/CertAuth.crt"
-		c.CertFile = "../test/hostname/Betty.crt"
-		c.KeyFile = "../test/hostname/Betty.key"
+		c.CAFile = "../../test/hostname/CertAuth.crt"
+		c.CertFile = "../../test/hostname/Betty.crt"
+		c.KeyFile = "../../test/hostname/Betty.key"
 		c.VerifyIncoming = true
 		c.VerifyOutgoing = true
 		c.VerifyServerHostname = true
 		// wanfed
-		c.ConnectEnabled = true
 		c.ConnectMeshGatewayWANFederationEnabled = true
 	})
 	defer os.RemoveAll(dir2)
 	defer s2.Shutdown()
 
-	// Try to join
+	// We'll use the same gateway for both datacenters since it doesn't care.
+	var p tcpproxy.Proxy
+	p.AddSNIRoute(gwAddr, "bob.server.dc1.consul", tcpproxy.To(s1.config.RPCAddr.String()))
+	p.AddSNIRoute(gwAddr, "betty.server.dc2.consul", tcpproxy.To(s2.config.RPCAddr.String()))
+	p.AddStopACMESearch(gwAddr)
+	require.NoError(t, p.Start())
+	defer func() {
+		p.Close()
+		p.Wait()
+	}()
+
+	t.Logf("routing %s => %s", "bob.server.dc1.consul", s1.config.RPCAddr.String())
+	t.Logf("routing %s => %s", "betty.server.dc2.consul", s2.config.RPCAddr.String())
+
+	// Register this into the catalog in dc1.
+	{
+		arg := structs.RegisterRequest{
+			Datacenter: "dc1",
+			Node:       "bob",
+			Address:    "127.0.0.1",
+			Service: &structs.NodeService{
+				Kind:    structs.ServiceKindMeshGateway,
+				ID:      "mesh-gateway",
+				Service: "mesh-gateway",
+				Meta:    map[string]string{"wanfed": "1"},
+				Port:    gwPort[0],
+			},
+		}
+
+		var out struct{}
+		require.NoError(t, s1.RPC("Catalog.Register", &arg, &out))
+	}
+
+	// Wait for it to make it into the gateway locator.
+	retry.Run(t, func(r *retry.R) {
+		require.NotEmpty(r, s1.gatewayLocator.PickGateway("dc1"))
+	})
+
+	// Seed the secondary with the address of the primary and wait for that to
+	// be in the locator.
+	_, err := s2.RefreshPrimaryGatewayFallbackAddresses([]string{gwAddr})
+	require.NoError(t, err)
+	retry.Run(t, func(r *retry.R) {
+		require.NotEmpty(r, s2.gatewayLocator.PickGateway("dc1"))
+	})
+
+	// Try to join from secondary to primary. We can't use joinWAN() because we
+	// are simulating proper bootstrapping and if ACLs were on we would have to
+	// delay gateway registration in the secondary until after one directional
+	// join.
+
+	s1addr, s2addr := joinAddrWAN(s1), joinAddrWAN(s2)
+	_ = s2addr
+	_, err = s2.JoinWAN([]string{s1addr})
+	require.NoError(t, err)
+	retry.Run(t, func(r *retry.R) {
+		if got, want := len(s2.WANMembers()), 2; got != want {
+			r.Fatalf("got %d s2 WAN members want %d", got, want)
+		}
+	})
+
+	// Now we can register this into the catalog in dc2.
+	{
+		arg := structs.RegisterRequest{
+			Datacenter: "dc2",
+			Node:       "betty",
+			Address:    "127.0.0.1",
+			Service: &structs.NodeService{
+				Kind:    structs.ServiceKindMeshGateway,
+				ID:      "mesh-gateway",
+				Service: "mesh-gateway",
+				Meta:    map[string]string{"wanfed": "1"},
+				Port:    gwPort[0],
+			},
+		}
+
+		var out struct{}
+		require.NoError(t, s2.RPC("Catalog.Register", &arg, &out))
+	}
+
+	// Wait for it to make it into the gateway locator in dc2 and then for
+	// AE to carry it back to the primary
+	retry.Run(t, func(r *retry.R) {
+		require.NotEmpty(r, s2.gatewayLocator.PickGateway("dc2"))
+		require.NotEmpty(r, s1.gatewayLocator.PickGateway("dc2"))
+	})
+
+	// Try to join again using the standard verification method now that
+	// all of the plumbing is in place.
 	joinWAN(t, s2, s1)
 	retry.Run(t, func(r *retry.R) {
 		if got, want := len(s1.WANMembers()), 2; got != want {

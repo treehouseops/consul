@@ -33,6 +33,7 @@ require (
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.1
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
+	github.com/google/tcpproxy v0.0.0-20180808230851-dfa16c61dad2
 	github.com/hashicorp/consul/api v1.2.0
 	github.com/hashicorp/consul/sdk v0.2.0
 	github.com/hashicorp/go-bexpr v0.1.2
