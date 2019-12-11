@@ -428,6 +428,70 @@ func TestServer_LANReap(t *testing.T) {
 	})
 }
 
+// TODO(wanfed): fork this test
+func TestServer_JoinWAN_viaMeshGateway(t *testing.T) {
+	// t.Parallel()
+
+	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.NodeName = "bob"
+		c.Datacenter = "dc1"
+		c.PrimaryDatacenter = "dc1"
+		c.Bootstrap = true
+		// tls
+		c.CAFile = "../test/hostname/CertAuth.crt"
+		c.CertFile = "../test/hostname/Bob.crt"
+		c.KeyFile = "../test/hostname/Bob.key"
+		c.VerifyIncoming = true
+		c.VerifyOutgoing = true
+		c.VerifyServerHostname = true
+		// wanfed
+		c.ConnectEnabled = true
+		c.ConnectMeshGatewayWANFederationEnabled = true
+	})
+	defer os.RemoveAll(dir1)
+	defer s1.Shutdown()
+
+	dir2, s2 := testServerWithConfig(t, func(c *Config) {
+		c.NodeName = "betty"
+		c.Datacenter = "dc2"
+		c.PrimaryDatacenter = "dc1"
+		c.Bootstrap = true
+		// tls
+		c.CAFile = "../test/hostname/CertAuth.crt"
+		c.CertFile = "../test/hostname/Betty.crt"
+		c.KeyFile = "../test/hostname/Betty.key"
+		c.VerifyIncoming = true
+		c.VerifyOutgoing = true
+		c.VerifyServerHostname = true
+		// wanfed
+		c.ConnectEnabled = true
+		c.ConnectMeshGatewayWANFederationEnabled = true
+	})
+	defer os.RemoveAll(dir2)
+	defer s2.Shutdown()
+
+	// Try to join
+	joinWAN(t, s2, s1)
+	retry.Run(t, func(r *retry.R) {
+		if got, want := len(s1.WANMembers()), 2; got != want {
+			r.Fatalf("got %d s1 WAN members want %d", got, want)
+		}
+		if got, want := len(s2.WANMembers()), 2; got != want {
+			r.Fatalf("got %d s2 WAN members want %d", got, want)
+		}
+	})
+
+	// Check the router has both
+	retry.Run(t, func(r *retry.R) {
+		if got, want := len(s1.router.GetDatacenters()), 2; got != want {
+			r.Fatalf("got %d routes want %d", got, want)
+		}
+		if got, want := len(s2.router.GetDatacenters()), 2; got != want {
+			r.Fatalf("got %d datacenters want %d", got, want)
+		}
+	})
+}
+
 func TestServer_JoinWAN(t *testing.T) {
 	t.Parallel()
 	dir1, s1 := testServer(t)
