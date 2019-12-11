@@ -1,7 +1,6 @@
 package exec
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -84,12 +83,8 @@ func TestExecCommand_CrossDC(t *testing.T) {
 
 	testrpc.WaitForTestAgent(t, a2.RPC, "dc2")
 
-	wanJoin1 := fmt.Sprintf("%s.%s/%s",
-		a1.Config.NodeName, a1.Config.Datacenter, a1.Config.SerfBindAddrWAN.String(),
-	)
-
 	// Join over the WAN
-	_, err := a2.JoinWAN([]string{wanJoin1})
+	_, err := a2.JoinWAN([]string{a1.Config.SerfBindAddrWAN.String()})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

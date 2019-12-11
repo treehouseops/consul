@@ -1,7 +1,6 @@
 package join
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -40,6 +39,8 @@ func TestJoinCommandJoin_lan(t *testing.T) {
 	}
 }
 
+// TODO(wanfed): add test for joining with the name specified
+
 func TestJoinCommand_wan(t *testing.T) {
 	t.Parallel()
 	a1 := agent.NewTestAgent(t, t.Name(), ``)
@@ -52,7 +53,7 @@ func TestJoinCommand_wan(t *testing.T) {
 	args := []string{
 		"-http-addr=" + a1.HTTPAddr(),
 		"-wan",
-		fmt.Sprintf("%s.%s/%s", a2.Config.NodeName, a2.Config.Datacenter, a2.Config.SerfBindAddrWAN.String()),
+		a2.Config.SerfBindAddrWAN.String(),
 	}
 
 	code := cmd.Run(args)

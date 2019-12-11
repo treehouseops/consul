@@ -2328,8 +2328,7 @@ func TestDNS_ServiceLookup_WanTranslation(t *testing.T) {
 
 	// Join WAN cluster
 	addr := fmt.Sprintf("127.0.0.1:%d", a1.Config.SerfPortWAN)
-	name := fmt.Sprintf("%s.%s", a1.Config.NodeName, a1.Config.Datacenter)
-	_, err := a2.JoinWAN([]string{name + "/" + addr})
+	_, err := a2.JoinWAN([]string{addr})
 	require.NoError(t, err)
 	retry.Run(t, func(r *retry.R) {
 		require.Len(r, a1.WANMembers(), 2)
@@ -5199,8 +5198,7 @@ func TestDNS_PreparedQuery_Failover(t *testing.T) {
 
 	// Join WAN cluster.
 	addr := fmt.Sprintf("127.0.0.1:%d", a1.Config.SerfPortWAN)
-	name := fmt.Sprintf("%s.%s", a1.Config.NodeName, a1.Config.Datacenter)
-	if _, err := a2.JoinWAN([]string{name + "/" + addr}); err != nil {
+	if _, err := a2.JoinWAN([]string{addr}); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	retry.Run(t, func(r *retry.R) {

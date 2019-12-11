@@ -1133,7 +1133,6 @@ func (s *Server) handleAliveMember(member serf.Member) error {
 	// Register consul service if a server
 	var service *structs.NodeService
 	if valid, parts := metadata.IsConsulServer(member); valid {
-
 		service = &structs.NodeService{
 			ID:      structs.ConsulServiceID,
 			Service: structs.ConsulServiceName,
@@ -1150,6 +1149,7 @@ func (s *Server) handleAliveMember(member serf.Member) error {
 				"version":               parts.Build.String(),
 			},
 		}
+
 		// Attempt to join the consul server
 		if err := s.joinConsulServer(member, parts); err != nil {
 			return err

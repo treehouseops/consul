@@ -1086,7 +1086,6 @@ func (a *Agent) consulConfig() (*consul.Config, error) {
 	// todo(fs): or is there a reason to keep it like that?
 	base.Datacenter = a.config.Datacenter
 	base.PrimaryDatacenter = a.config.PrimaryDatacenter
-
 	base.DataDir = a.config.DataDir
 	base.NodeName = a.config.NodeName
 
