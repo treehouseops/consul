@@ -198,8 +198,12 @@ func (g *GatewayLocator) updateFromState(results []*structs.DatacenterConfig) {
 	}
 
 	if primaryReady {
-		if _, open := <-g.primaryGatewaysReadyCh; open {
-			close(g.primaryGatewaysReadyCh)
+		select {
+		case _, open := <-g.primaryGatewaysReadyCh:
+			if open {
+				close(g.primaryGatewaysReadyCh)
+			}
+		default:
 		}
 	}
 }
