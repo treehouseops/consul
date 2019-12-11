@@ -391,7 +391,7 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 		aclAuthMethodValidators: authmethod.NewCache(),
 	}
 
-	if s.config.ConnectEnabled && s.config.ConnectMeshGatewayWANFederationEnabled { // TODO: anything else to gate this?
+	if s.config.ConnectMeshGatewayWANFederationEnabled {
 		s.gatewayLocator = NewGatewayLocator(
 			s.logger,
 			s,
@@ -424,7 +424,7 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 
 	datacenterConfigReplicatorConfig := ReplicatorConfig{
 		Name:     "Datacenter Config",
-		Delegate: &FunctionReplicator{ReplicateFn: s.replicateDatacenterConfig}, // TODO
+		Delegate: &FunctionReplicator{ReplicateFn: s.replicateDatacenterConfig},
 		Rate:     s.config.DatacenterConfigReplicationRate,
 		Burst:    s.config.DatacenterConfigReplicationBurst,
 		Logger:   logger,
