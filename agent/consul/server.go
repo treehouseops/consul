@@ -394,7 +394,7 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 	if s.config.ConnectEnabled && s.config.ConnectMeshGatewayWANFederationEnabled { // TODO: anything else to gate this?
 		s.gatewayLocator = NewGatewayLocator(
 			s.logger,
-			s, // THIS MAKES INIT TANGLED
+			s,
 			s.config.Datacenter,
 			s.config.PrimaryDatacenter,
 		)
