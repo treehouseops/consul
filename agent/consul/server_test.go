@@ -430,9 +430,8 @@ func TestServer_LANReap(t *testing.T) {
 	})
 }
 
-// TODO(wanfed): fork this test
 func TestServer_JoinWAN_viaMeshGateway(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
 
 	gwPort := freeport.MustTake(1)
 	defer freeport.Return(gwPort)
@@ -525,11 +524,9 @@ func TestServer_JoinWAN_viaMeshGateway(t *testing.T) {
 	// Try to join from secondary to primary. We can't use joinWAN() because we
 	// are simulating proper bootstrapping and if ACLs were on we would have to
 	// delay gateway registration in the secondary until after one directional
-	// join.
-
-	s1addr, s2addr := joinAddrWAN(s1), joinAddrWAN(s2)
-	_ = s2addr
-	_, err = s2.JoinWAN([]string{s1addr})
+	// join. So this way we explicitly join secondary-to-primary as a standalone
+	// operation and follow it up later with a full join.
+	_, err = s2.JoinWAN([]string{joinAddrWAN(s1)})
 	require.NoError(t, err)
 	retry.Run(t, func(r *retry.R) {
 		if got, want := len(s2.WANMembers()), 2; got != want {
