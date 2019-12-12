@@ -1798,6 +1798,14 @@ func (a *Agent) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	return nil
 }
 
+// TODO: for testing
+func (a *Agent) PickRandomMeshGatewaySuitableForDialing(dc string) string {
+	if srv, ok := a.delegate.(*consul.Server); ok {
+		return srv.PickRandomMeshGatewaySuitableForDialing(dc)
+	}
+	return ""
+}
+
 func (a *Agent) RefreshPrimaryGatewayFallbackAddresses(addrs []string) (int, error) {
 	if srv, ok := a.delegate.(*consul.Server); ok {
 		return srv.RefreshPrimaryGatewayFallbackAddresses(addrs)

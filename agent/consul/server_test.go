@@ -541,6 +541,7 @@ func TestServer_JoinWAN_Flood(t *testing.T) {
 	}
 }
 
+// This is a mirror of a similar test in agent/agent_test.go
 func TestServer_JoinWAN_viaMeshGateway(t *testing.T) {
 	t.Parallel()
 

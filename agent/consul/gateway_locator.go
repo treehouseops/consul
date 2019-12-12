@@ -1,6 +1,7 @@
 package consul
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"sort"
@@ -132,6 +133,8 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 		results   []*structs.DatacenterConfig
 		queryMeta structs.QueryMeta
 	)
+	g.logger.Printf("[ERR] consul.gatewayLocator: entering blocking Query")
+	defer g.logger.Printf("[ERR] consul.gatewayLocator: exiting blocking Query")
 	err := g.srv.blockingQuery(
 		queryOpts,
 		&queryMeta,
@@ -159,7 +162,16 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 	return queryMeta.Index, nil
 }
 
+func jd(v interface{}) string {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "ERR:" + err.Error()
+	}
+	return string(b)
+}
+
 func (g *GatewayLocator) updateFromState(results []*structs.DatacenterConfig) {
+	g.logger.Printf("[ERR] consul.gatewayLocator: updating from %s", jd(results))
 	var (
 		local   structs.CheckServiceNodes
 		primary structs.CheckServiceNodes
