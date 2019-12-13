@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	datacenterConfigAntiEntropyRefreshTimeout = 10 * time.Minute
+	// TODO: make this configurable; it's roughly the same sort of thing as the ae_interval knob that defaults to 1min
+	datacenterConfigAntiEntropyRefreshTimeout = 1 * time.Minute
 )
 
 func (s *Server) startDatacenterConfigAntiEntropy() {
