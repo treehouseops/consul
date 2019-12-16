@@ -22,20 +22,28 @@ export default function(assert, library, pages, utils) {
     return page;
   };
 
-  const pauseUntil = function(cb) {
-    return new Promise(function(resolve, reject) {
+  const pauseUntil = function(run, message = 'assertion timed out') {
+    return new Promise(function(r, reject) {
       let count = 0;
-      const interval = setInterval(function() {
-        if (++count >= 50) {
-          clearInterval(interval);
-          assert.ok(false);
-          reject();
-        }
-        cb(function() {
-          clearInterval(interval);
-          resolve();
+      let resolved = false;
+      const resolve = function() {
+        resolved = true;
+        r();
+      };
+      (function tick() {
+        run(resolve, reject).then(function() {
+          if (!resolved) {
+            setTimeout(function() {
+              if (++count >= 50) {
+                assert.ok(false, message);
+                reject();
+                return;
+              }
+              tick();
+            }, 100);
+          }
         });
-      }, 100);
+      })();
     });
   };
   const mb = function(path) {
@@ -76,10 +84,10 @@ export default function(assert, library, pages, utils) {
   models(library, utils.create);
   http(library, utils.respondWith, utils.set);
   visit(library, pages, setCurrentPage);
-  click(library, find, utils.click);
+  click(library, pauseUntil, find, utils.click);
   form(library, find, utils.fillIn, utils.triggerKeyEvent, getCurrentPage);
   debug(library, assert, utils.currentURL);
-  assertHttp(library, assert, utils.lastNthRequest);
+  assertHttp(library, assert, pauseUntil, utils.lastNthRequest);
   assertModel(library, assert, find, getCurrentPage, pauseUntil, utils.pluralize);
   assertPage(library, assert, find, getCurrentPage);
   assertDom(library, assert, pauseUntil, utils.find, utils.currentURL, clipboard);

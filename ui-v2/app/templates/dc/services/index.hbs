@@ -1,4 +1,14 @@
-{{#app-view class="service list"}}
+{{data-source
+  src=(concat '/' dc '/services')
+  onchange=(action (mut items) value='data')
+  onerror=(action (mut error) value='error')
+}}
+{{#if
+    (not (is-undefined error))
+}}
+  {{app-error error=error.errors.firstObject}}
+{{else}}
+  {{#app-view class="service list" loading=(is-undefined items)}}
     {{#block-slot 'notification' as |status type|}}
       {{partial 'dc/services/notifications'}}
     {{/block-slot}}
@@ -57,5 +67,6 @@
           {{/block-slot}}
         {{/changeable-set}}
     {{/block-slot}}
-{{/app-view}}
+  {{/app-view}}
+{{/if}}
 

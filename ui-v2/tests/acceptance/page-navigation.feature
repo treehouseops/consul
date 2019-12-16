@@ -11,7 +11,7 @@ Feature: Page Navigation
       dc: dc-1
     ---
     Then the url should be /dc-1/services
-    Then the last GET request was made to "/v1/internal/ui/services?dc=dc-1"
+    Then a GET request is made to "/v1/internal/ui/services?dc=dc-1"
   Scenario: Clicking [Link] in the navigation takes me to [URL]
     When I visit the services page for yaml
     ---
@@ -19,7 +19,7 @@ Feature: Page Navigation
     ---
     When I click [Link] on the navigation
     Then the url should be [URL]
-    Then the last GET request was made to "[Endpoint]"
+    Then a GET request is made to "[Endpoint]"
   Where:
     -----------------------------------------------------------------------
     | Link       | URL               | Endpoint                           |

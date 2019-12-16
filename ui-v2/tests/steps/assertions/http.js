@@ -2,7 +2,7 @@
 // unless you specifically ask it to assert for order of requests
 // this should also let us simplify the entire API for these steps
 // an reword them to make more sense
-export default function(scenario, assert, lastNthRequest) {
+export default function(scenario, assert, pauseUntil, lastNthRequest) {
   // lastNthRequest should return a
   // {
   //   method: '',
@@ -78,8 +78,17 @@ export default function(scenario, assert, lastNthRequest) {
     })
 
     .then('a $method request is made to "$url"', function(method, url) {
-      const request = lastNthRequest(1);
-      assertRequest(request, method, url);
+      return pauseUntil(function(resolve, reject) {
+        const requests = lastNthRequest(null, method);
+        const request = requests.find(function(item) {
+          return item.url === url;
+        });
+        if (request) {
+          assertRequest(request, method, url);
+          resolve();
+        }
+        return Promise.resolve();
+      });
     })
     .then('the last $method request was made to "$url"', function(method, url) {
       const request = lastNthRequest(0, method);
