@@ -7,7 +7,7 @@ Feature: token headers
     Given 1 datacenter model with the value "datacenter"
     When I visit the index page
     Then the url should be /datacenter/services
-    And a GET request is made to "/v1/namespaces" from yaml
+    And a GET request was made to "/v1/namespaces" from yaml
     ---
     headers:
       X-Consul-Token: ''
