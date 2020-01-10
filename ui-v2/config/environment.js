@@ -107,6 +107,24 @@ module.exports = function(environment) {
       endpoints: ['/node_modules/@hashicorp/consul-api-double/v1'],
     };
   }
+  // The coverage environment is for when running test coverage
+  // which should only run on 'Unit' tests therefore don't use api-double
+  // to prevent it causing issues with coverage reporting
+  // (coverage reporting uses a http request which can get caught
+  // by the api-double mock http request)
+  // again all of this needs to be reduced down to a switch statement
+  // based on environment
+  if (environment === 'coverage') {
+    // Testem prefers this...
+    ENV.locationType = 'none';
+
+    // keep test console output quieter
+    ENV.APP.LOG_ACTIVE_GENERATION = false;
+    ENV.APP.LOG_VIEW_LOOKUPS = false;
+
+    ENV.APP.rootElement = '#ember-testing';
+    ENV.APP.autoboot = false;
+  }
   if (environment === 'staging') {
     ENV['@hashicorp/ember-cli-api-double'] = {
       enabled: true,
@@ -115,14 +133,11 @@ module.exports = function(environment) {
   }
 
   if (environment === 'production') {
-    ENV = Object.assign(
-      {},
-      ENV,
-      {
-        CONSUL_ACLS_ENABLED: '{{.ACLsEnabled}}',
-        CONSUL_NSPACES_ENABLED: '{{ if .NamespacesEnabled }}{{.NamespacesEnabled}}{{ else }}false{{ end }}'
-      }
-    );
+    ENV = Object.assign({}, ENV, {
+      CONSUL_ACLS_ENABLED: '{{.ACLsEnabled}}',
+      CONSUL_NSPACES_ENABLED:
+        '{{ if .NamespacesEnabled }}{{.NamespacesEnabled}}{{ else }}false{{ end }}',
+    });
     // here you can enable a production-specific feature
   }
   return ENV;
