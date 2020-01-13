@@ -64,10 +64,16 @@ func (s *Server) reconcileLocalFederationState(ctx context.Context, states []*st
 	defer ticker.Stop()
 
 	for i, state := range states {
+		dup := *state // lightweight copy
+		state2 := &dup
+
+		// Keep track of the raft modify index at the primary
+		state2.PrimaryModifyIndex = state.ModifyIndex
+
 		req := structs.FederationStateRequest{
 			Op:         op,
 			Datacenter: s.config.Datacenter,
-			Config:     state,
+			Config:     state2,
 		}
 
 		resp, err := s.raftApply(structs.FederationStateRequestType, &req)

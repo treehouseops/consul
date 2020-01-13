@@ -111,6 +111,13 @@ func (s *Store) federationStateSetTxn(tx *memdb.Txn, idx uint64, config *structs
 		config.ModifyIndex = idx
 	}
 
+	if config.PrimaryModifyIndex == 0 {
+		// Since replication ordinarly would set this value for us, we can
+		// assume this is a write to the primary datacenter's federation state
+		// so we can just duplicate the new modify index.
+		config.PrimaryModifyIndex = idx
+	}
+
 	// Insert the federation state and update the index
 	if err := tx.Insert(federationStateTableName, config); err != nil {
 		return fmt.Errorf("failed inserting federation state: %s", err)

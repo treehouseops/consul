@@ -33,10 +33,11 @@ func (listings FederationStates) Sort() {
 }
 
 type FederationState struct {
-	Datacenter   string
-	MeshGateways CheckServiceNodes `json:",omitempty"`
-	UpdatedAt    time.Time
-	RaftIndex
+	Datacenter         string
+	MeshGateways       CheckServiceNodes `json:",omitempty"`
+	UpdatedAt          time.Time
+	PrimaryModifyIndex uint64 // raft data from the primary
+	RaftIndex                 // local raft data
 }
 
 // TODO:
