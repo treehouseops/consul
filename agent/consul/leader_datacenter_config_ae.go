@@ -15,6 +15,8 @@ var (
 	datacenterConfigAntiEntropyRefreshTimeout = 1 * time.Minute
 )
 
+// TODO: prune configs in the primary when the corresponding datacenter drops out of the catalog
+
 func (s *Server) startDatacenterConfigAntiEntropy() {
 	s.leaderRoutineManager.Start(datacenterConfigAntiEntropyRoutineName, s.datacenterConfigAntiEntropySync)
 }

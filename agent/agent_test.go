@@ -4182,7 +4182,7 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 
 	waitForDatacenterConfig := func(t *testing.T, a *TestAgent, dc string) {
 		retry.Run(t, func(r *retry.R) {
-			req, err := http.NewRequest("GET", "/v1/datacenter-config/"+dc, nil)
+			req, err := http.NewRequest("GET", "/v1/internal/datacenter-config/"+dc, nil)
 			require.NoError(r, err)
 
 			resp := httptest.NewRecorder()
