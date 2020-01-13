@@ -4180,25 +4180,25 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 		require.Nil(t, obj)
 	}
 
-	waitForDatacenterConfig := func(t *testing.T, a *TestAgent, dc string) {
+	waitForFederationState := func(t *testing.T, a *TestAgent, dc string) {
 		retry.Run(t, func(r *retry.R) {
-			req, err := http.NewRequest("GET", "/v1/internal/datacenter-config/"+dc, nil)
+			req, err := http.NewRequest("GET", "/v1/internal/federation-state/"+dc, nil)
 			require.NoError(r, err)
 
 			resp := httptest.NewRecorder()
-			obj, err := a.srv.DatacenterConfigCRUD(resp, req)
+			obj, err := a.srv.FederationStateGet(resp, req)
 			require.NoError(r, err)
 			require.NotNil(r, obj)
 
-			out, ok := obj.(structs.DatacenterConfigResponse)
+			out, ok := obj.(structs.FederationStateResponse)
 			require.True(r, ok)
 			require.NotNil(r, out.Config)
 			require.Len(r, out.Config.MeshGateways, 1)
 		})
 	}
 
-	// Wait until at least catalog AE and dcconfig AE fire.
-	waitForDatacenterConfig(t, a1, "dc1")
+	// Wait until at least catalog AE and federation state AE fire.
+	waitForFederationState(t, a1, "dc1")
 	retry.Run(t, func(r *retry.R) {
 		require.NotEmpty(r, a1.PickRandomMeshGatewaySuitableForDialing("dc1"))
 	})
@@ -4307,18 +4307,18 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 		require.Nil(t, obj)
 	}
 
-	// Wait until dcconfig replication functions
-	waitForDatacenterConfig(t, a1, "dc1")
-	waitForDatacenterConfig(t, a1, "dc2")
-	waitForDatacenterConfig(t, a1, "dc3")
+	// Wait until federation state replication functions
+	waitForFederationState(t, a1, "dc1")
+	waitForFederationState(t, a1, "dc2")
+	waitForFederationState(t, a1, "dc3")
 
-	waitForDatacenterConfig(t, a2, "dc1")
-	waitForDatacenterConfig(t, a2, "dc2")
-	waitForDatacenterConfig(t, a2, "dc3")
+	waitForFederationState(t, a2, "dc1")
+	waitForFederationState(t, a2, "dc2")
+	waitForFederationState(t, a2, "dc3")
 
-	waitForDatacenterConfig(t, a3, "dc1")
-	waitForDatacenterConfig(t, a3, "dc2")
-	waitForDatacenterConfig(t, a3, "dc3")
+	waitForFederationState(t, a3, "dc1")
+	waitForFederationState(t, a3, "dc2")
+	waitForFederationState(t, a3, "dc3")
 
 	retry.Run(t, func(r *retry.R) {
 		require.NotEmpty(r, a1.PickRandomMeshGatewaySuitableForDialing("dc1"))

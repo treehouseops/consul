@@ -1790,7 +1790,7 @@ func (a *Agent) JoinWAN(addrs []string) (n int, err error) {
 	return
 }
 
-// TODO : this will be closed when dc configs ship back at least one primary mgw (does not count fallback)
+// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
 func (a *Agent) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	if srv, ok := a.delegate.(*consul.Server); ok {
 		return srv.PrimaryMeshGatewayAddressesReadyCh()
@@ -4091,7 +4091,7 @@ func (a *Agent) registerCache() {
 		RefreshTimeout: 10 * time.Minute,
 	})
 
-	a.cache.RegisterType(cachetype.DatacenterConfigName, &cachetype.DatacenterConfig{
+	a.cache.RegisterType(cachetype.FederationStateName, &cachetype.FederationState{
 		RPC: a,
 	}, &cache.RegisterOptions{
 		Refresh:        true,

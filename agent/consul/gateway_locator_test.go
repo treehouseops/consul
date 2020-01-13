@@ -16,7 +16,7 @@ func TestGatewayLocator(t *testing.T) {
 	state, err := state.NewStateStore(nil)
 	require.NoError(t, err)
 
-	dc1 := &structs.DatacenterConfig{
+	dc1 := &structs.FederationState{
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -28,7 +28,7 @@ func TestGatewayLocator(t *testing.T) {
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-	dc2 := &structs.DatacenterConfig{
+	dc2 := &structs.FederationState{
 		Datacenter: "dc2",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -42,8 +42,8 @@ func TestGatewayLocator(t *testing.T) {
 	}
 
 	// Insert data for the dcs
-	require.NoError(t, state.DatacenterConfigSet(1, dc1))
-	require.NoError(t, state.DatacenterConfigSet(2, dc2))
+	require.NoError(t, state.FederationStateSet(1, dc1))
+	require.NoError(t, state.FederationStateSet(2, dc2))
 
 	t.Run("primary", func(t *testing.T) {
 		logger := testutil.TestLogger(t)

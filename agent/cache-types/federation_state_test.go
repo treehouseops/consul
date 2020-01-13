@@ -11,22 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDatacenterConfig(t *testing.T) {
+func TestFederationState(t *testing.T) {
 	rpc := TestRPC(t)
-	typ := &DatacenterConfig{RPC: rpc}
+	typ := &FederationState{RPC: rpc}
 
 	// Expect the proper RPC call. This also sets the expected value
 	// since that is return-by-pointer in the arguments.
-	var resp *structs.IndexedDatacenterConfigs
-	rpc.On("RPC", "DatacenterConfig.List", mock.Anything, mock.Anything).Return(nil).
+	var resp *structs.IndexedFederationStates
+	rpc.On("RPC", "FederationState.List", mock.Anything, mock.Anything).Return(nil).
 		Run(func(args mock.Arguments) {
 			req := args.Get(1).(*structs.DCSpecificRequest)
 			require.Equal(t, uint64(24), req.QueryOptions.MinQueryIndex)
 			require.Equal(t, 1*time.Second, req.QueryOptions.MaxQueryTime)
 			require.True(t, req.AllowStale)
 
-			reply := args.Get(2).(*structs.IndexedDatacenterConfigs)
-			reply.Configs = []*structs.DatacenterConfig{
+			reply := args.Get(2).(*structs.IndexedFederationStates)
+			reply.Configs = []*structs.FederationState{
 				{
 					Datacenter: "dc9",
 					MeshGateways: []structs.CheckServiceNode{
@@ -98,7 +98,7 @@ func TestDatacenterConfig(t *testing.T) {
 	rpc.AssertExpectations(t)
 }
 
-func TestDatacenterConfig_badReqType(t *testing.T) {
+func TestFederationState_badReqType(t *testing.T) {
 	rpc := TestRPC(t)
 	typ := &CatalogServices{RPC: rpc}
 

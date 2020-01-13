@@ -27,7 +27,7 @@ const (
 	leafWatchID                      = "leaf"
 	intentionsWatchID                = "intentions"
 	serviceListWatchID               = "service-list"
-	datacenterConfigListWatchID      = "datacenter-config-list"
+	federationStateListWatchID       = "federation-state-list"
 	consulServerListWatchID          = "consul-server-list"
 	datacentersWatchID               = "datacenters"
 	serviceResolversWatchID          = "service-resolvers"
@@ -343,11 +343,11 @@ func (s *state) initWatchesMeshGateway() error {
 		// TODO(wanfed): conveniently we can just use this attribute in one
 		// place here to set the machinery in motion and leave the conditional
 		// behavior out of the rest
-		err = s.cache.Notify(s.ctx, cachetype.DatacenterConfigName, &structs.DCSpecificRequest{
+		err = s.cache.Notify(s.ctx, cachetype.FederationStateName, &structs.DCSpecificRequest{
 			Datacenter:   s.source.Datacenter,
 			QueryOptions: structs.QueryOptions{Token: s.token},
 			Source:       *s.source,
-		}, datacenterConfigListWatchID, s.ch)
+		}, federationStateListWatchID, s.ch)
 		if err != nil {
 			return err
 		}
@@ -732,17 +732,17 @@ func (s *state) handleUpdateMeshGateway(u cache.UpdateEvent, snap *ConfigSnapsho
 			return fmt.Errorf("invalid type for response: %T", u.Result)
 		}
 		snap.Roots = roots
-	case datacenterConfigListWatchID:
-		configs, ok := u.Result.(*structs.IndexedDatacenterConfigs)
+	case federationStateListWatchID:
+		configs, ok := u.Result.(*structs.IndexedFederationStates)
 		if !ok {
 			return fmt.Errorf("invalid type for response: %T", u.Result)
 		}
 
-		m := make(map[string]*structs.DatacenterConfig)
+		m := make(map[string]*structs.FederationState)
 		for _, config := range configs.Configs {
 			m[config.Datacenter] = config
 		}
-		snap.MeshGateway.DatacenterConfigs = m
+		snap.MeshGateway.FederationStates = m
 	case serviceListWatchID:
 		services, ok := u.Result.(*structs.IndexedServices)
 		if !ok {

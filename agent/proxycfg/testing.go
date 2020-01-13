@@ -970,7 +970,7 @@ func TestConfigSnapshotMeshGateway(t testing.T) *ConfigSnapshot {
 	return testConfigSnapshotMeshGateway(t, true, false)
 }
 
-func TestConfigSnapshotMeshGatewayUsingDatacenterConfigs(t testing.T) *ConfigSnapshot {
+func TestConfigSnapshotMeshGatewayUsingFederationStates(t testing.T) *ConfigSnapshot {
 	return testConfigSnapshotMeshGateway(t, true, true)
 }
 
@@ -978,7 +978,7 @@ func TestConfigSnapshotMeshGatewayNoServices(t testing.T) *ConfigSnapshot {
 	return testConfigSnapshotMeshGateway(t, false, false)
 }
 
-func testConfigSnapshotMeshGateway(t testing.T, populateServices bool, useDatacenterConfigs bool) *ConfigSnapshot {
+func testConfigSnapshotMeshGateway(t testing.T, populateServices bool, useFederationStates bool) *ConfigSnapshot {
 	roots, _ := TestCerts(t)
 	snap := &ConfigSnapshot{
 		Kind:    structs.ServiceKindMeshGateway,
@@ -1024,9 +1024,9 @@ func testConfigSnapshotMeshGateway(t testing.T, populateServices bool, useDatace
 				"dc2": TestGatewayNodesDC2(t),
 			},
 		}
-		if useDatacenterConfigs {
-			snap.MeshGateway.DatacenterConfigs = map[string]*structs.DatacenterConfig{
-				"dc2": &structs.DatacenterConfig{
+		if useFederationStates {
+			snap.MeshGateway.FederationStates = map[string]*structs.FederationState{
+				"dc2": &structs.FederationState{
 					Datacenter:   "dc2",
 					UpdatedAt:    time.Now().UTC(),
 					MeshGateways: TestGatewayNodesDC2(t),

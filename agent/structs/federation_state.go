@@ -5,34 +5,34 @@ import (
 	"time"
 )
 
-type DatacenterConfigOp string
+type FederationStateOp string
 
 const (
-	DatacenterConfigUpsert DatacenterConfigOp = "upsert"
-	DatacenterConfigDelete DatacenterConfigOp = "delete"
+	FederationStateUpsert FederationStateOp = "upsert"
+	FederationStateDelete FederationStateOp = "delete"
 )
 
-type DatacenterConfigRequest struct {
+type FederationStateRequest struct {
 	Datacenter string
-	Op         DatacenterConfigOp
-	Config     *DatacenterConfig
+	Op         FederationStateOp
+	Config     *FederationState
 
 	WriteRequest
 }
 
-func (c *DatacenterConfigRequest) RequestDatacenter() string {
+func (c *FederationStateRequest) RequestDatacenter() string {
 	return c.Datacenter
 }
 
-type DatacenterConfigs []*DatacenterConfig
+type FederationStates []*FederationState
 
-func (listings DatacenterConfigs) Sort() {
+func (listings FederationStates) Sort() {
 	sort.Slice(listings, func(i, j int) bool {
 		return listings[i].Datacenter < listings[j].Datacenter
 	})
 }
 
-type DatacenterConfig struct {
+type FederationState struct {
 	Datacenter   string
 	MeshGateways CheckServiceNodes `json:",omitempty"`
 	UpdatedAt    time.Time
@@ -40,7 +40,7 @@ type DatacenterConfig struct {
 }
 
 // TODO:
-func (c *DatacenterConfig) IsSame(other *DatacenterConfig) bool {
+func (c *FederationState) IsSame(other *FederationState) bool {
 	if c.Datacenter != other.Datacenter {
 		return false
 	}
@@ -84,24 +84,24 @@ func (c *DatacenterConfig) IsSame(other *DatacenterConfig) bool {
 	return true
 }
 
-type DatacenterConfigQuery struct {
+type FederationStateQuery struct {
 	Datacenter string
 
 	TargetDatacenter string
 	QueryOptions
 }
 
-type DatacenterConfigResponse struct {
-	Config *DatacenterConfig
+type FederationStateResponse struct {
+	Config *FederationState
 	QueryMeta
 }
 
-type IndexedDatacenterConfigs struct {
-	Configs DatacenterConfigs
+type IndexedFederationStates struct {
+	Configs FederationStates
 	QueryMeta
 }
 
-func (c *DatacenterConfigQuery) RequestDatacenter() string {
+func (c *FederationStateQuery) RequestDatacenter() string {
 	return c.TargetDatacenter
 }
 

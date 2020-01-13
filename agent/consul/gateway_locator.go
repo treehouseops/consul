@@ -35,7 +35,7 @@ type GatewayLocator struct {
 	primaryGatewaysReadyCh chan struct{}
 }
 
-// TODO : this will be closed when dc configs ship back at least one primary mgw (does not count fallback)
+// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
 func (g *GatewayLocator) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	return g.primaryGatewaysReadyCh
 }
@@ -129,7 +129,7 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 	}
 
 	var (
-		results   []*structs.DatacenterConfig
+		results   []*structs.FederationState
 		queryMeta structs.QueryMeta
 	)
 	err := g.srv.blockingQuery(
@@ -140,7 +140,7 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 			// We could phone home to get this but that would incur extra WAN traffic
 			// when we already have enough information locally to figure it out
 			// (assuming that our replicator is still functioning).
-			idx, all, err := state.DatacenterConfigList(ws)
+			idx, all, err := state.FederationStateList(ws)
 			if err != nil {
 				return err
 			}
@@ -159,7 +159,7 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 	return queryMeta.Index, nil
 }
 
-func (g *GatewayLocator) updateFromState(results []*structs.DatacenterConfig) {
+func (g *GatewayLocator) updateFromState(results []*structs.FederationState) {
 	var (
 		local   structs.CheckServiceNodes
 		primary structs.CheckServiceNodes

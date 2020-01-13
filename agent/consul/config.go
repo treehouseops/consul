@@ -367,19 +367,19 @@ type Config struct {
 	// used to limit the amount of Raft bandwidth used for replication.
 	ConfigReplicationApplyLimit int
 
-	// DatacenterConfigReplicationRate is the max number of replication rounds that can
+	// FederationStateReplicationRate is the max number of replication rounds that can
 	// be run per second. Note that either 1 or 2 RPCs are used during each replication
 	// round
-	DatacenterConfigReplicationRate int
+	FederationStateReplicationRate int
 
-	// DatacenterConfigReplicationBurst is how many replication rounds can be bursted after a
+	// FederationStateReplicationBurst is how many replication rounds can be bursted after a
 	// period of idleness
-	DatacenterConfigReplicationBurst int
+	FederationStateReplicationBurst int
 
-	// DatacenterConfigReplicationApply limit is the max number of replication-related
+	// FederationStateReplicationApply limit is the max number of replication-related
 	// apply operations that we allow during a one second period. This is
 	// used to limit the amount of Raft bandwidth used for replication.
-	DatacenterConfigReplicationApplyLimit int
+	FederationStateReplicationApplyLimit int
 
 	// CoordinateUpdatePeriod controls how long a server batches coordinate
 	// updates before applying them in a Raft transaction. A larger period
@@ -513,35 +513,35 @@ func DefaultConfig() *Config {
 	}
 
 	conf := &Config{
-		Build:                                 version.Version,
-		Datacenter:                            DefaultDC,
-		NodeName:                              hostname,
-		RPCAddr:                               DefaultRPCAddr,
-		RaftConfig:                            raft.DefaultConfig(),
-		SerfLANConfig:                         lib.SerfDefaultConfig(),
-		SerfWANConfig:                         lib.SerfDefaultConfig(),
-		SerfFloodInterval:                     60 * time.Second,
-		ReconcileInterval:                     60 * time.Second,
-		ProtocolVersion:                       ProtocolVersion2Compatible,
-		ACLRoleTTL:                            30 * time.Second,
-		ACLPolicyTTL:                          30 * time.Second,
-		ACLTokenTTL:                           30 * time.Second,
-		ACLDefaultPolicy:                      "allow",
-		ACLDownPolicy:                         "extend-cache",
-		ACLReplicationRate:                    1,
-		ACLReplicationBurst:                   5,
-		ACLReplicationApplyLimit:              100, // ops / sec
-		ConfigReplicationRate:                 1,
-		ConfigReplicationBurst:                5,
-		ConfigReplicationApplyLimit:           100, // ops / sec
-		DatacenterConfigReplicationRate:       1,
-		DatacenterConfigReplicationBurst:      5,
-		DatacenterConfigReplicationApplyLimit: 100, // ops / sec
-		TombstoneTTL:                          15 * time.Minute,
-		TombstoneTTLGranularity:               30 * time.Second,
-		SessionTTLMin:                         10 * time.Second,
-		ACLTokenMinExpirationTTL:              1 * time.Minute,
-		ACLTokenMaxExpirationTTL:              24 * time.Hour,
+		Build:                                version.Version,
+		Datacenter:                           DefaultDC,
+		NodeName:                             hostname,
+		RPCAddr:                              DefaultRPCAddr,
+		RaftConfig:                           raft.DefaultConfig(),
+		SerfLANConfig:                        lib.SerfDefaultConfig(),
+		SerfWANConfig:                        lib.SerfDefaultConfig(),
+		SerfFloodInterval:                    60 * time.Second,
+		ReconcileInterval:                    60 * time.Second,
+		ProtocolVersion:                      ProtocolVersion2Compatible,
+		ACLRoleTTL:                           30 * time.Second,
+		ACLPolicyTTL:                         30 * time.Second,
+		ACLTokenTTL:                          30 * time.Second,
+		ACLDefaultPolicy:                     "allow",
+		ACLDownPolicy:                        "extend-cache",
+		ACLReplicationRate:                   1,
+		ACLReplicationBurst:                  5,
+		ACLReplicationApplyLimit:             100, // ops / sec
+		ConfigReplicationRate:                1,
+		ConfigReplicationBurst:               5,
+		ConfigReplicationApplyLimit:          100, // ops / sec
+		FederationStateReplicationRate:       1,
+		FederationStateReplicationBurst:      5,
+		FederationStateReplicationApplyLimit: 100, // ops / sec
+		TombstoneTTL:                         15 * time.Minute,
+		TombstoneTTLGranularity:              30 * time.Second,
+		SessionTTLMin:                        10 * time.Second,
+		ACLTokenMinExpirationTTL:             1 * time.Minute,
+		ACLTokenMaxExpirationTTL:             24 * time.Hour,
 
 		// These are tuned to provide a total throughput of 128 updates
 		// per second. If you update these, you should update the client-

@@ -31,7 +31,7 @@ func init() {
 	registerRestorer(structs.ACLRoleSetRequestType, restoreRole)
 	registerRestorer(structs.ACLBindingRuleSetRequestType, restoreBindingRule)
 	registerRestorer(structs.ACLAuthMethodSetRequestType, restoreAuthMethod)
-	registerRestorer(structs.DatacenterConfigRequestType, restoreDatacenterConfig)
+	registerRestorer(structs.FederationStateRequestType, restoreFederationState)
 }
 
 func persistOSS(s *snapshot, sink raft.SnapshotSink, encoder *codec.Encoder) error {
@@ -71,7 +71,7 @@ func persistOSS(s *snapshot, sink raft.SnapshotSink, encoder *codec.Encoder) err
 	if err := s.persistConfigEntries(sink, encoder); err != nil {
 		return err
 	}
-	if err := s.persistDatacenterConfigs(sink, encoder); err != nil {
+	if err := s.persistFederationStates(sink, encoder); err != nil {
 		return err
 	}
 	if err := s.persistIndex(sink, encoder); err != nil {
@@ -439,20 +439,20 @@ func (s *snapshot) persistConfigEntries(sink raft.SnapshotSink,
 	return nil
 }
 
-func (s *snapshot) persistDatacenterConfigs(sink raft.SnapshotSink, encoder *codec.Encoder) error {
-	configs, err := s.state.DatacenterConfigs()
+func (s *snapshot) persistFederationStates(sink raft.SnapshotSink, encoder *codec.Encoder) error {
+	configs, err := s.state.FederationStates()
 	if err != nil {
 		return err
 	}
 
 	for _, config := range configs {
-		if _, err := sink.Write([]byte{byte(structs.DatacenterConfigRequestType)}); err != nil {
+		if _, err := sink.Write([]byte{byte(structs.FederationStateRequestType)}); err != nil {
 			return err
 		}
 		// Encode the entry request without an operation since we don't need it for restoring.
 		// The request is used for its custom decoding/encoding logic around the ConfigEntry
 		// interface.
-		req := &structs.DatacenterConfigRequest{
+		req := &structs.FederationStateRequest{
 			Config: config,
 		}
 		if err := encoder.Encode(req); err != nil {
@@ -700,10 +700,10 @@ func restoreAuthMethod(header *snapshotHeader, restore *state.Restore, decoder *
 	return restore.ACLAuthMethod(&req)
 }
 
-func restoreDatacenterConfig(header *snapshotHeader, restore *state.Restore, decoder *codec.Decoder) error {
-	var req structs.DatacenterConfigRequest
+func restoreFederationState(header *snapshotHeader, restore *state.Restore, decoder *codec.Decoder) error {
+	var req structs.FederationStateRequest
 	if err := decoder.Decode(&req); err != nil {
 		return err
 	}
-	return restore.DatacenterConfig(req.Config)
+	return restore.FederationState(req.Config)
 }

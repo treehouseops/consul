@@ -91,19 +91,19 @@ const (
 )
 
 const (
-	legacyACLReplicationRoutineName        = "legacy ACL replication"
-	aclPolicyReplicationRoutineName        = "ACL policy replication"
-	aclRoleReplicationRoutineName          = "ACL role replication"
-	aclTokenReplicationRoutineName         = "ACL token replication"
-	aclTokenReapingRoutineName             = "acl token reaping"
-	aclUpgradeRoutineName                  = "legacy ACL token upgrade"
-	caRootPruningRoutineName               = "CA root pruning"
-	configReplicationRoutineName           = "config entry replication"
-	datacenterConfigReplicationRoutineName = "datacenter config replication"
-	datacenterConfigAntiEntropyRoutineName = "datacenter config anti-entropy"
-	intentionReplicationRoutineName        = "intention replication"
-	secondaryCARootWatchRoutineName        = "secondary CA roots watch"
-	secondaryCertRenewWatchRoutineName     = "secondary cert renew watch"
+	legacyACLReplicationRoutineName       = "legacy ACL replication"
+	aclPolicyReplicationRoutineName       = "ACL policy replication"
+	aclRoleReplicationRoutineName         = "ACL role replication"
+	aclTokenReplicationRoutineName        = "ACL token replication"
+	aclTokenReapingRoutineName            = "acl token reaping"
+	aclUpgradeRoutineName                 = "legacy ACL token upgrade"
+	caRootPruningRoutineName              = "CA root pruning"
+	configReplicationRoutineName          = "config entry replication"
+	federationStateReplicationRoutineName = "federation state replication"
+	federationStateAntiEntropyRoutineName = "federation state anti-entropy"
+	intentionReplicationRoutineName       = "intention replication"
+	secondaryCARootWatchRoutineName       = "secondary CA roots watch"
+	secondaryCertRenewWatchRoutineName    = "secondary cert renew watch"
 )
 
 var (
@@ -150,9 +150,9 @@ type Server struct {
 	// centralized config
 	configReplicator *Replicator
 
-	// datacenterConfigReplicator is used to manage the leaders replication routines for
-	// datacenter configs
-	datacenterConfigReplicator *Replicator
+	// federationStateReplicator is used to manage the leaders replication routines for
+	// federation states
+	federationStateReplicator *Replicator
 
 	// tokens holds ACL tokens initially from the configuration, but can
 	// be updated at runtime, so should always be used instead of going to
@@ -422,14 +422,14 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 		return nil, err
 	}
 
-	datacenterConfigReplicatorConfig := ReplicatorConfig{
-		Name:     "Datacenter Config",
-		Delegate: &FunctionReplicator{ReplicateFn: s.replicateDatacenterConfig},
-		Rate:     s.config.DatacenterConfigReplicationRate,
-		Burst:    s.config.DatacenterConfigReplicationBurst,
+	federationStateReplicatorConfig := ReplicatorConfig{
+		Name:     "Federation State",
+		Delegate: &FunctionReplicator{ReplicateFn: s.replicateFederationState},
+		Rate:     s.config.FederationStateReplicationRate,
+		Burst:    s.config.FederationStateReplicationBurst,
 		Logger:   logger,
 	}
-	s.datacenterConfigReplicator, err = NewReplicator(&datacenterConfigReplicatorConfig)
+	s.federationStateReplicator, err = NewReplicator(&federationStateReplicatorConfig)
 	if err != nil {
 		s.Shutdown()
 		return nil, err
@@ -1049,7 +1049,7 @@ func (s *Server) JoinWAN(addrs []string) (int, error) {
 	return s.serfWAN.Join(addrs, true)
 }
 
-// TODO : this will be closed when dc configs ship back at least one primary mgw (does not count fallback)
+// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
 func (s *Server) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	if s.gatewayLocator == nil {
 		return nil

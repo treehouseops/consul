@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReplication_DatacenterConfigs(t *testing.T) {
+func TestReplication_FederationStates(t *testing.T) {
 	t.Parallel()
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
 		c.PrimaryDatacenter = "dc1"
@@ -27,9 +27,9 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 	dir2, s2 := testServerWithConfig(t, func(c *Config) {
 		c.Datacenter = "dc2"
 		c.PrimaryDatacenter = "dc1"
-		c.DatacenterConfigReplicationRate = 100
-		c.DatacenterConfigReplicationBurst = 100
-		c.DatacenterConfigReplicationApplyLimit = 1000000
+		c.FederationStateReplicationRate = 100
+		c.FederationStateReplicationBurst = 100
+		c.FederationStateReplicationApplyLimit = 1000000
 	})
 	testrpc.WaitForLeader(t, s2.RPC, "dc2")
 	defer os.RemoveAll(dir2)
@@ -40,16 +40,16 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 	testrpc.WaitForLeader(t, s1.RPC, "dc1")
 	testrpc.WaitForLeader(t, s1.RPC, "dc2")
 
-	// Create some new dc configs (weird because we're having dc1 update it for the other 50)
-	var configs []*structs.DatacenterConfig
+	// Create some new federation states (weird because we're having dc1 update it for the other 50)
+	var states []*structs.FederationState
 	for i := 0; i < 50; i++ {
 		dc := fmt.Sprintf("alt-dc%d", i+1)
 		ip1 := fmt.Sprintf("1.2.3.%d", i+1)
 		ip2 := fmt.Sprintf("4.3.2.%d", i+1)
-		arg := structs.DatacenterConfigRequest{
+		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
-			Op:         structs.DatacenterConfigUpsert,
-			Config: &structs.DatacenterConfig{
+			Op:         structs.FederationStateUpsert,
+			Config: &structs.FederationState{
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
@@ -64,14 +64,14 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 		}
 
 		out := false
-		require.NoError(t, s1.RPC("DatacenterConfig.Apply", &arg, &out))
-		configs = append(configs, arg.Config)
+		require.NoError(t, s1.RPC("FederationState.Apply", &arg, &out))
+		states = append(states, arg.Config)
 	}
 
 	checkSame := func(t *retry.R) error {
-		_, remote, err := s1.fsm.State().DatacenterConfigList(nil)
+		_, remote, err := s1.fsm.State().FederationStateList(nil)
 		require.NoError(t, err)
-		_, local, err := s2.fsm.State().DatacenterConfigList(nil)
+		_, local, err := s2.fsm.State().FederationStateList(nil)
 		require.NoError(t, err)
 
 		require.Len(t, local, len(remote))
@@ -89,16 +89,16 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 		checkSame(r)
 	})
 
-	// Update those configs
+	// Update those states
 	for i := 0; i < 50; i++ {
 		dc := fmt.Sprintf("alt-dc%d", i+1)
 		ip1 := fmt.Sprintf("1.2.3.%d", i+1)
 		ip2 := fmt.Sprintf("4.3.2.%d", i+1)
 		ip3 := fmt.Sprintf("5.8.9.%d", i+1)
-		arg := structs.DatacenterConfigRequest{
+		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
-			Op:         structs.DatacenterConfigUpsert,
-			Config: &structs.DatacenterConfig{
+			Op:         structs.FederationStateUpsert,
+			Config: &structs.FederationState{
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
@@ -116,7 +116,7 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 		}
 
 		out := false
-		require.NoError(t, s1.RPC("DatacenterConfig.Apply", &arg, &out))
+		require.NoError(t, s1.RPC("FederationState.Apply", &arg, &out))
 	}
 
 	// Wait for the replica to converge.
@@ -124,15 +124,15 @@ func TestReplication_DatacenterConfigs(t *testing.T) {
 		checkSame(r)
 	})
 
-	for _, config := range configs {
-		arg := structs.DatacenterConfigRequest{
+	for _, state := range states {
+		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
-			Op:         structs.DatacenterConfigDelete,
-			Config:     config,
+			Op:         structs.FederationStateDelete,
+			Config:     state,
 		}
 
 		out := false
-		require.NoError(t, s1.RPC("DatacenterConfig.Delete", &arg, &out))
+		require.NoError(t, s1.RPC("FederationState.Delete", &arg, &out))
 	}
 
 	// Wait for the replica to converge.

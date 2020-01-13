@@ -274,8 +274,8 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	err = fsm.chunker.RestoreState(chunkState)
 	require.NoError(err)
 
-	// Datacenter configs
-	dcConfig1 := &structs.DatacenterConfig{
+	// Federation states
+	fedState1 := &structs.FederationState{
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			{
@@ -325,7 +325,7 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-	dcConfig2 := &structs.DatacenterConfig{
+	fedState2 := &structs.FederationState{
 		Datacenter: "dc2",
 		MeshGateways: []structs.CheckServiceNode{
 			{
@@ -375,8 +375,8 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-	require.NoError(fsm.state.DatacenterConfigSet(21, dcConfig1))
-	require.NoError(fsm.state.DatacenterConfigSet(22, dcConfig2))
+	require.NoError(fsm.state.FederationStateSet(21, fedState1))
+	require.NoError(fsm.state.FederationStateSet(22, fedState2))
 
 	// Snapshot
 	snap, err := fsm.Snapshot()
@@ -596,13 +596,13 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(newChunkState, chunkState)
 
-	// Verify datacenter configs are restored.
-	_, dcConfigLoaded1, err := fsm2.state.DatacenterConfigGet(nil, "dc1")
+	// Verify federation states are restored.
+	_, fedStateLoaded1, err := fsm2.state.FederationStateGet(nil, "dc1")
 	require.NoError(err)
-	assert.Equal(dcConfig1, dcConfigLoaded1)
-	_, dcConfigLoaded2, err := fsm2.state.DatacenterConfigGet(nil, "dc2")
+	assert.Equal(fedState1, fedStateLoaded1)
+	_, fedStateLoaded2, err := fsm2.state.FederationStateGet(nil, "dc2")
 	require.NoError(err)
-	assert.Equal(dcConfig2, dcConfigLoaded2)
+	assert.Equal(fedState2, fedStateLoaded2)
 
 	// Snapshot
 	snap, err = fsm2.Snapshot()

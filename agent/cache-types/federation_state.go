@@ -8,14 +8,14 @@ import (
 )
 
 // Recommended name for registration.
-const DatacenterConfigName = "datacenter-config"
+const FederationStateName = "federation-state"
 
-// DatacenterConfig supports fetching datacenter configs.
-type DatacenterConfig struct {
+// FederationState supports fetching federation states.
+type FederationState struct {
 	RPC RPC
 }
 
-func (c *DatacenterConfig) Fetch(opts cache.FetchOptions, req cache.Request) (cache.FetchResult, error) {
+func (c *FederationState) Fetch(opts cache.FetchOptions, req cache.Request) (cache.FetchResult, error) {
 	var result cache.FetchResult
 
 	// The request should be a DCSpecificRequest.
@@ -40,8 +40,8 @@ func (c *DatacenterConfig) Fetch(opts cache.FetchOptions, req cache.Request) (ca
 	reqReal.AllowStale = true
 
 	// Fetch
-	var reply structs.IndexedDatacenterConfigs
-	if err := c.RPC.RPC("DatacenterConfig.List", reqReal, &reply); err != nil {
+	var reply structs.IndexedFederationStates
+	if err := c.RPC.RPC("FederationState.List", reqReal, &reply); err != nil {
 		return result, err
 	}
 
@@ -50,6 +50,6 @@ func (c *DatacenterConfig) Fetch(opts cache.FetchOptions, req cache.Request) (ca
 	return result, nil
 }
 
-func (c *DatacenterConfig) SupportsBlocking() bool {
+func (c *FederationState) SupportsBlocking() bool {
 	return true
 }

@@ -10,18 +10,18 @@ import (
 	"github.com/hashicorp/consul/agent/structs"
 )
 
-func datacenterConfigSort(configs []*structs.DatacenterConfig) {
-	sort.Slice(configs, func(i, j int) bool {
-		return configs[i].Datacenter < configs[j].Datacenter
+func federationStateSort(states []*structs.FederationState) {
+	sort.Slice(states, func(i, j int) bool {
+		return states[i].Datacenter < states[j].Datacenter
 	})
 }
 
-func diffDatacenterConfigs(local []*structs.DatacenterConfig, remote []*structs.DatacenterConfig, lastRemoteIndex uint64) ([]*structs.DatacenterConfig, []*structs.DatacenterConfig) {
-	datacenterConfigSort(local)
-	datacenterConfigSort(remote)
+func diffFederationStates(local []*structs.FederationState, remote []*structs.FederationState, lastRemoteIndex uint64) ([]*structs.FederationState, []*structs.FederationState) {
+	federationStateSort(local)
+	federationStateSort(remote)
 
-	var deletions []*structs.DatacenterConfig
-	var updates []*structs.DatacenterConfig
+	var deletions []*structs.FederationState
+	var updates []*structs.FederationState
 	var localIdx int
 	var remoteIdx int
 	for localIdx, remoteIdx = 0, 0; localIdx < len(local) && remoteIdx < len(remote); {
@@ -59,26 +59,26 @@ func diffDatacenterConfigs(local []*structs.DatacenterConfig, remote []*structs.
 	return deletions, updates
 }
 
-func (s *Server) reconcileLocalDatacenterConfig(ctx context.Context, configs []*structs.DatacenterConfig, op structs.DatacenterConfigOp) (bool, error) {
-	ticker := time.NewTicker(time.Second / time.Duration(s.config.DatacenterConfigReplicationApplyLimit))
+func (s *Server) reconcileLocalFederationState(ctx context.Context, states []*structs.FederationState, op structs.FederationStateOp) (bool, error) {
+	ticker := time.NewTicker(time.Second / time.Duration(s.config.FederationStateReplicationApplyLimit))
 	defer ticker.Stop()
 
-	for i, config := range configs {
-		req := structs.DatacenterConfigRequest{
+	for i, state := range states {
+		req := structs.FederationStateRequest{
 			Op:         op,
 			Datacenter: s.config.Datacenter,
-			Config:     config,
+			Config:     state,
 		}
 
-		resp, err := s.raftApply(structs.DatacenterConfigRequestType, &req)
+		resp, err := s.raftApply(structs.FederationStateRequestType, &req)
 		if err != nil {
-			return false, fmt.Errorf("Failed to apply datacenter config %s: %v", op, err)
+			return false, fmt.Errorf("Failed to apply federation state %s: %v", op, err)
 		}
 		if respErr, ok := resp.(error); ok && err != nil {
-			return false, fmt.Errorf("Failed to apply datacenter config %s: %v", op, respErr)
+			return false, fmt.Errorf("Failed to apply federation state %s: %v", op, respErr)
 		}
 
-		if i < len(configs)-1 {
+		if i < len(states)-1 {
 			select {
 			case <-ctx.Done():
 				return true, nil
@@ -91,8 +91,8 @@ func (s *Server) reconcileLocalDatacenterConfig(ctx context.Context, configs []*
 	return false, nil
 }
 
-func (s *Server) fetchDatacenterConfigs(lastRemoteIndex uint64) (*structs.IndexedDatacenterConfigs, error) {
-	defer metrics.MeasureSince([]string{"leader", "replication", "datacenter-configs", "fetch"}, time.Now())
+func (s *Server) fetchFederationStates(lastRemoteIndex uint64) (*structs.IndexedFederationStates, error) {
+	defer metrics.MeasureSince([]string{"leader", "replication", "federation-states", "fetch"}, time.Now())
 
 	req := structs.DCSpecificRequest{
 		Datacenter: s.config.PrimaryDatacenter,
@@ -103,21 +103,21 @@ func (s *Server) fetchDatacenterConfigs(lastRemoteIndex uint64) (*structs.Indexe
 		},
 	}
 
-	var response structs.IndexedDatacenterConfigs
-	if err := s.RPC("DatacenterConfig.List", &req, &response); err != nil {
+	var response structs.IndexedFederationStates
+	if err := s.RPC("FederationState.List", &req, &response); err != nil {
 		return nil, err
 	}
 
 	return &response, nil
 }
 
-func (s *Server) replicateDatacenterConfig(ctx context.Context, lastRemoteIndex uint64) (uint64, bool, error) {
-	remote, err := s.fetchDatacenterConfigs(lastRemoteIndex)
+func (s *Server) replicateFederationState(ctx context.Context, lastRemoteIndex uint64) (uint64, bool, error) {
+	remote, err := s.fetchFederationStates(lastRemoteIndex)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to retrieve remote datacenter configs: %v", err)
+		return 0, false, fmt.Errorf("failed to retrieve remote federation states: %v", err)
 	}
 
-	s.logger.Printf("[DEBUG] replication: finished fetching datacenter configs: %d", len(remote.Configs))
+	s.logger.Printf("[DEBUG] replication: finished fetching federation states: %d", len(remote.Configs))
 
 	// Need to check if we should be stopping. This will be common as the fetching process is a blocking
 	// RPC which could have been hanging around for a long time and during that time leadership could
@@ -132,11 +132,11 @@ func (s *Server) replicateDatacenterConfig(ctx context.Context, lastRemoteIndex 
 	// Measure everything after the remote query, which can block for long
 	// periods of time. This metric is a good measure of how expensive the
 	// replication process is.
-	defer metrics.MeasureSince([]string{"leader", "replication", "datacenter-config", "apply"}, time.Now())
+	defer metrics.MeasureSince([]string{"leader", "replication", "federation-state", "apply"}, time.Now())
 
-	_, local, err := s.fsm.State().DatacenterConfigList(nil)
+	_, local, err := s.fsm.State().FederationStateList(nil)
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to retrieve local datacenter configs: %v", err)
+		return 0, false, fmt.Errorf("failed to retrieve local federation states: %v", err)
 	}
 
 	// If the remote index ever goes backwards, it's a good indication that
@@ -145,7 +145,7 @@ func (s *Server) replicateDatacenterConfig(ctx context.Context, lastRemoteIndex 
 	//
 	// Resetting lastRemoteIndex to 0 will work because we never consider local
 	// raft indices. Instead we compare the raft modify index in the response object
-	// with the lastRemoteIndex (only when we already have a datacenter config of the same name)
+	// with the lastRemoteIndex (only when we already have a federation state of the same name)
 	// to determine if an update is needed. Resetting lastRemoteIndex to 0 then has the affect
 	// of making us think all the local state is out of date and any matching configs should
 	// still be updated.
@@ -153,40 +153,40 @@ func (s *Server) replicateDatacenterConfig(ctx context.Context, lastRemoteIndex 
 	// The lastRemoteIndex is not used when the entry exists either only in the local state or
 	// only in the remote state. In those situations we need to either delete it or create it.
 	if remote.QueryMeta.Index < lastRemoteIndex {
-		s.logger.Printf("[WARN] replication: Datacenter Config replication remote index moved backwards (%d to %d), forcing a full Datacenter Config sync", lastRemoteIndex, remote.QueryMeta.Index)
+		s.logger.Printf("[WARN] replication: Federation State replication remote index moved backwards (%d to %d), forcing a full Federation State sync", lastRemoteIndex, remote.QueryMeta.Index)
 		lastRemoteIndex = 0
 	}
 
-	s.logger.Printf("[DEBUG] replication: Datacenter Config replication - local: %d, remote: %d", len(local), len(remote.Configs))
+	s.logger.Printf("[DEBUG] replication: Federation State replication - local: %d, remote: %d", len(local), len(remote.Configs))
 	// Calculate the changes required to bring the state into sync and then
 	// apply them.
-	deletions, updates := diffDatacenterConfigs(local, remote.Configs, lastRemoteIndex)
+	deletions, updates := diffFederationStates(local, remote.Configs, lastRemoteIndex)
 
-	s.logger.Printf("[DEBUG] replication: Datacenter Config replication - deletions: %d, updates: %d", len(deletions), len(updates))
+	s.logger.Printf("[DEBUG] replication: Federation State replication - deletions: %d, updates: %d", len(deletions), len(updates))
 
 	if len(deletions) > 0 {
-		s.logger.Printf("[DEBUG] replication: Datacenter Config replication - performing %d deletions", len(deletions))
+		s.logger.Printf("[DEBUG] replication: Federation State replication - performing %d deletions", len(deletions))
 
-		exit, err := s.reconcileLocalDatacenterConfig(ctx, deletions, structs.DatacenterConfigDelete)
+		exit, err := s.reconcileLocalFederationState(ctx, deletions, structs.FederationStateDelete)
 		if exit {
 			return 0, true, nil
 		}
 		if err != nil {
-			return 0, false, fmt.Errorf("failed to delete local datacenter configs: %v", err)
+			return 0, false, fmt.Errorf("failed to delete local federation states: %v", err)
 		}
-		s.logger.Printf("[DEBUG] replication: Datacenter Config replication - finished deletions")
+		s.logger.Printf("[DEBUG] replication: Federation State replication - finished deletions")
 	}
 
 	if len(updates) > 0 {
-		s.logger.Printf("[DEBUG] replication: Datacenter Config replication - performing %d updates", len(updates))
-		exit, err := s.reconcileLocalDatacenterConfig(ctx, updates, structs.DatacenterConfigUpsert)
+		s.logger.Printf("[DEBUG] replication: Federation State replication - performing %d updates", len(updates))
+		exit, err := s.reconcileLocalFederationState(ctx, updates, structs.FederationStateUpsert)
 		if exit {
 			return 0, true, nil
 		}
 		if err != nil {
-			return 0, false, fmt.Errorf("failed to update local datacenter configs: %v", err)
+			return 0, false, fmt.Errorf("failed to update local federation states: %v", err)
 		}
-		s.logger.Printf("[DEBUG] replication: Datacenter Config replication - finished updates")
+		s.logger.Printf("[DEBUG] replication: Federation State replication - finished updates")
 	}
 
 	// Return the index we got back from the remote side, since we've synced

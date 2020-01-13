@@ -13,19 +13,19 @@ import (
 // TODO: move these under Operator?
 
 // TODO(docs)
-type DatacenterConfig struct {
+type FederationState struct {
 	srv *Server
 }
 
-func (c *DatacenterConfig) Apply(args *structs.DatacenterConfigRequest, reply *bool) error {
-	// Ensure that all datacenter config writes go to the primary datacenter. These will then
+func (c *FederationState) Apply(args *structs.FederationStateRequest, reply *bool) error {
+	// Ensure that all federation state writes go to the primary datacenter. These will then
 	// be replicated to all the other datacenters.
 	args.Datacenter = c.srv.config.PrimaryDatacenter
 
-	if done, err := c.srv.forward("DatacenterConfig.Apply", args, args, reply); done {
+	if done, err := c.srv.forward("FederationState.Apply", args, args, reply); done {
 		return err
 	}
-	defer metrics.MeasureSince([]string{"datacenter_config", "apply"}, time.Now())
+	defer metrics.MeasureSince([]string{"federation_state", "apply"}, time.Now())
 
 	// Fetch the ACL token, if any.
 	rule, err := c.srv.ResolveToken(args.Token)
@@ -41,8 +41,8 @@ func (c *DatacenterConfig) Apply(args *structs.DatacenterConfigRequest, reply *b
 		args.Config.UpdatedAt = time.Now().UTC()
 	}
 
-	args.Op = structs.DatacenterConfigUpsert
-	resp, err := c.srv.raftApply(structs.DatacenterConfigRequestType, args)
+	args.Op = structs.FederationStateUpsert
+	resp, err := c.srv.raftApply(structs.FederationStateRequestType, args)
 	if err != nil {
 		return err
 	}
@@ -56,15 +56,15 @@ func (c *DatacenterConfig) Apply(args *structs.DatacenterConfigRequest, reply *b
 	return nil
 }
 
-func (c *DatacenterConfig) Delete(args *structs.DatacenterConfigRequest, reply *bool) error {
-	// Ensure that all datacenter config writes go to the primary datacenter. These will then
+func (c *FederationState) Delete(args *structs.FederationStateRequest, reply *bool) error {
+	// Ensure that all federation state writes go to the primary datacenter. These will then
 	// be replicated to all the other datacenters.
 	args.Datacenter = c.srv.config.PrimaryDatacenter
 
-	if done, err := c.srv.forward("DatacenterConfig.Delete", args, args, reply); done {
+	if done, err := c.srv.forward("FederationState.Delete", args, args, reply); done {
 		return err
 	}
-	defer metrics.MeasureSince([]string{"datacenter_config", "delete"}, time.Now())
+	defer metrics.MeasureSince([]string{"federation_state", "delete"}, time.Now())
 
 	// Fetch the ACL token, if any.
 	rule, err := c.srv.ResolveToken(args.Token)
@@ -76,8 +76,8 @@ func (c *DatacenterConfig) Delete(args *structs.DatacenterConfigRequest, reply *
 		return acl.ErrPermissionDenied
 	}
 
-	args.Op = structs.DatacenterConfigDelete
-	resp, err := c.srv.raftApply(structs.DatacenterConfigRequestType, args)
+	args.Op = structs.FederationStateDelete
+	resp, err := c.srv.raftApply(structs.FederationStateRequestType, args)
 	if err != nil {
 		return err
 	}
@@ -91,11 +91,11 @@ func (c *DatacenterConfig) Delete(args *structs.DatacenterConfigRequest, reply *
 	return nil
 }
 
-func (c *DatacenterConfig) Get(args *structs.DatacenterConfigQuery, reply *structs.DatacenterConfigResponse) error {
-	if done, err := c.srv.forward("DatacenterConfig.Get", args, args, reply); done {
+func (c *FederationState) Get(args *structs.FederationStateQuery, reply *structs.FederationStateResponse) error {
+	if done, err := c.srv.forward("FederationState.Get", args, args, reply); done {
 		return err
 	}
-	defer metrics.MeasureSince([]string{"datacenter_config", "get"}, time.Now())
+	defer metrics.MeasureSince([]string{"federation_state", "get"}, time.Now())
 
 	// Fetch the ACL token, if any.
 	rule, err := c.srv.ResolveToken(args.Token)
@@ -111,7 +111,7 @@ func (c *DatacenterConfig) Get(args *structs.DatacenterConfigQuery, reply *struc
 		&args.QueryOptions,
 		&reply.QueryMeta,
 		func(ws memdb.WatchSet, state *state.Store) error {
-			index, config, err := state.DatacenterConfigGet(ws, args.Datacenter)
+			index, config, err := state.FederationStateGet(ws, args.Datacenter)
 			if err != nil {
 				return err
 			}
@@ -126,11 +126,11 @@ func (c *DatacenterConfig) Get(args *structs.DatacenterConfigQuery, reply *struc
 		})
 }
 
-func (c *DatacenterConfig) List(args *structs.DCSpecificRequest, reply *structs.IndexedDatacenterConfigs) error {
-	if done, err := c.srv.forward("DatacenterConfig.List", args, args, reply); done {
+func (c *FederationState) List(args *structs.DCSpecificRequest, reply *structs.IndexedFederationStates) error {
+	if done, err := c.srv.forward("FederationState.List", args, args, reply); done {
 		return err
 	}
-	defer metrics.MeasureSince([]string{"datacenter_config", "list"}, time.Now())
+	defer metrics.MeasureSince([]string{"federation_state", "list"}, time.Now())
 
 	// Fetch the ACL token, if any.
 	rule, err := c.srv.ResolveToken(args.Token)
@@ -146,14 +146,14 @@ func (c *DatacenterConfig) List(args *structs.DCSpecificRequest, reply *structs.
 		&args.QueryOptions,
 		&reply.QueryMeta,
 		func(ws memdb.WatchSet, state *state.Store) error {
-			index, configs, err := state.DatacenterConfigList(ws)
+			index, configs, err := state.FederationStateList(ws)
 			if err != nil {
 				return err
 			}
 
 			reply.Index = index
 			if len(configs) == 0 {
-				reply.Configs = []*structs.DatacenterConfig{}
+				reply.Configs = []*structs.FederationState{}
 				return nil
 			}
 

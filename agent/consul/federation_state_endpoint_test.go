@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDatacenterConfig_Apply(t *testing.T) {
+func TestFederationState_Apply(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServer(t)
@@ -42,8 +42,8 @@ func TestDatacenterConfig_Apply(t *testing.T) {
 	testrpc.WaitForLeader(t, s2.RPC, "dc1")
 
 	// update the primary with data from a secondary by way of request forwarding
-	args := structs.DatacenterConfigRequest{
-		Config: &structs.DatacenterConfig{
+	args := structs.FederationStateRequest{
+		Config: &structs.FederationState{
 			Datacenter: "dc-test1",
 			MeshGateways: []structs.CheckServiceNode{
 				newTestMeshGatewayNode(
@@ -57,30 +57,30 @@ func TestDatacenterConfig_Apply(t *testing.T) {
 		},
 	}
 	out := false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "DatacenterConfig.Apply", &args, &out))
+	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Apply", &args, &out))
 	require.True(t, out)
 
 	// the previous RPC should not return until the primary has been updated but will return
 	// before the secondary has the data.
 	state := s1.fsm.State()
-	_, dcConfig2, err := state.DatacenterConfigGet(nil, "dc-test1")
+	_, fedState2, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
-	require.NotNil(t, dcConfig2)
-	dcConfig2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
-	require.Equal(t, args.Config, dcConfig2)
+	require.NotNil(t, fedState2)
+	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
+	require.Equal(t, args.Config, fedState2)
 
 	retry.Run(t, func(r *retry.R) {
 		// wait for replication to happen
 		state := s2.fsm.State()
-		_, dcConfig2Again, err := state.DatacenterConfigGet(nil, "dc-test1")
+		_, fedState2Again, err := state.FederationStateGet(nil, "dc-test1")
 		require.NoError(r, err)
-		require.NotNil(r, dcConfig2Again)
+		require.NotNil(r, fedState2Again)
 
-		// this test is not testing that the datacenter configs that are
+		// this test is not testing that the federation states that are
 		// replicated are correct as that's done elsewhere.
 	})
 
-	updated := &structs.DatacenterConfig{
+	updated := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -90,24 +90,24 @@ func TestDatacenterConfig_Apply(t *testing.T) {
 		UpdatedAt: time.Now().UTC(),
 	}
 
-	args = structs.DatacenterConfigRequest{
+	args = structs.FederationStateRequest{
 		Config: updated,
 	}
 
 	out = false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "DatacenterConfig.Apply", &args, &out))
+	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Apply", &args, &out))
 	require.True(t, out)
 
 	state = s1.fsm.State()
-	_, dcConfig2, err = state.DatacenterConfigGet(nil, "dc-test1")
+	_, fedState2, err = state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
-	require.NotNil(t, dcConfig2)
+	require.NotNil(t, fedState2)
 
-	dcConfig2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
-	require.Equal(t, updated, dcConfig2)
+	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
+	require.Equal(t, updated, fedState2)
 }
 
-func TestDatacenterConfig_Apply_ACLDeny(t *testing.T) {
+func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
@@ -131,7 +131,7 @@ func TestDatacenterConfig_Apply_ACLDeny(t *testing.T) {
 	opWriteToken, err := upsertTestTokenWithPolicyRules(codec, "root", "dc1", `operator = "write"`)
 	require.NoError(t, err)
 
-	expected := &structs.DatacenterConfig{
+	expected := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -145,39 +145,39 @@ func TestDatacenterConfig_Apply_ACLDeny(t *testing.T) {
 	}
 
 	{ // This should fail since we don't have write perms.
-		args := structs.DatacenterConfigRequest{
+		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
 			Config:       expected,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
 		out := false
-		err := msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Apply", &args, &out)
+		err := msgpackrpc.CallWithCodec(codec, "FederationState.Apply", &args, &out)
 		if !acl.IsErrPermissionDenied(err) {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	{ // This should work.
-		args := structs.DatacenterConfigRequest{
+		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
 			Config:       expected,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
 		out := false
-		require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Apply", &args, &out))
+		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Apply", &args, &out))
 	}
 
 	// the previous RPC should not return until the primary has been updated but will return
 	// before the secondary has the data.
 	state := s1.fsm.State()
-	_, got, err := state.DatacenterConfigGet(nil, "dc-test1")
+	_, got, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	got.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
 	require.Equal(t, expected, got)
 }
 
-func TestDatacenterConfig_Get(t *testing.T) {
+func TestFederationState_Get(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServer(t)
@@ -189,7 +189,7 @@ func TestDatacenterConfig_Get(t *testing.T) {
 	codec := rpcClient(t, s1)
 	defer codec.Close()
 
-	expected := &structs.DatacenterConfig{
+	expected := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -203,19 +203,19 @@ func TestDatacenterConfig_Get(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, expected))
+	require.NoError(t, state.FederationStateSet(1, expected))
 
-	args := structs.DatacenterConfigQuery{
+	args := structs.FederationStateQuery{
 		Datacenter:       "dc-test1",
 		TargetDatacenter: "dc1",
 	}
-	var out structs.DatacenterConfigResponse
-	require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Get", &args, &out))
+	var out structs.FederationStateResponse
+	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
 	require.Equal(t, expected, out.Config)
 }
 
-func TestDatacenterConfig_Get_ACLDeny(t *testing.T) {
+func TestFederationState_Get_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
@@ -242,7 +242,7 @@ func TestDatacenterConfig_Get_ACLDeny(t *testing.T) {
 	require.NoError(t, err)
 
 	// create some dummy stuff to look up
-	expected := &structs.DatacenterConfig{
+	expected := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -256,35 +256,35 @@ func TestDatacenterConfig_Get_ACLDeny(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, expected))
+	require.NoError(t, state.FederationStateSet(1, expected))
 
 	{ // This should fail
-		args := structs.DatacenterConfigQuery{
+		args := structs.FederationStateQuery{
 			Datacenter:       "dc-test1",
 			TargetDatacenter: "dc1",
 			QueryOptions:     structs.QueryOptions{Token: nadaToken.SecretID},
 		}
-		var out structs.DatacenterConfigResponse
-		err := msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Get", &args, &out)
+		var out structs.FederationStateResponse
+		err := msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out)
 		if !acl.IsErrPermissionDenied(err) {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	{ // This should work
-		args := structs.DatacenterConfigQuery{
+		args := structs.FederationStateQuery{
 			Datacenter:       "dc-test1",
 			TargetDatacenter: "dc1",
 			QueryOptions:     structs.QueryOptions{Token: opReadToken.SecretID},
 		}
-		var out structs.DatacenterConfigResponse
-		require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Get", &args, &out))
+		var out structs.FederationStateResponse
+		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
 		require.Equal(t, expected, out.Config)
 	}
 }
 
-func TestDatacenterConfig_List(t *testing.T) {
+func TestFederationState_List(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServer(t)
@@ -297,8 +297,8 @@ func TestDatacenterConfig_List(t *testing.T) {
 	defer codec.Close()
 
 	// create some dummy data
-	expected := structs.IndexedDatacenterConfigs{
-		Configs: []*structs.DatacenterConfig{
+	expected := structs.IndexedFederationStates{
+		Configs: []*structs.FederationState{
 			{
 				Datacenter: "dc-test1",
 				MeshGateways: []structs.CheckServiceNode{
@@ -327,23 +327,23 @@ func TestDatacenterConfig_List(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, expected.Configs[0]))
-	require.NoError(t, state.DatacenterConfigSet(2, expected.Configs[1]))
+	require.NoError(t, state.FederationStateSet(1, expected.Configs[0]))
+	require.NoError(t, state.FederationStateSet(2, expected.Configs[1]))
 
-	args := structs.DatacenterConfigQuery{
+	args := structs.FederationStateQuery{
 		Datacenter: "dc1",
 	}
-	var out structs.IndexedDatacenterConfigs
-	require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.List", &args, &out))
+	var out structs.IndexedFederationStates
+	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
 	// exclude dc1 which is written by a background routine on the leader and is not relevant
-	out.Configs = omitDatacenterConfig(out.Configs, "dc1")
+	out.Configs = omitFederationState(out.Configs, "dc1")
 
 	require.Equal(t, expected.Configs, out.Configs)
 }
 
-func omitDatacenterConfig(all []*structs.DatacenterConfig, omit string) []*structs.DatacenterConfig {
-	var out []*structs.DatacenterConfig
+func omitFederationState(all []*structs.FederationState, omit string) []*structs.FederationState {
+	var out []*structs.FederationState
 	for _, config := range all {
 		if config.Datacenter != omit {
 			out = append(out, config)
@@ -352,7 +352,7 @@ func omitDatacenterConfig(all []*structs.DatacenterConfig, omit string) []*struc
 	return out
 }
 
-func TestDatacenterConfig_List_ACLDeny(t *testing.T) {
+func TestFederationState_List_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
@@ -379,8 +379,8 @@ func TestDatacenterConfig_List_ACLDeny(t *testing.T) {
 	require.NoError(t, err)
 
 	// create some dummy data
-	expected := structs.IndexedDatacenterConfigs{
-		Configs: []*structs.DatacenterConfig{
+	expected := structs.IndexedFederationStates{
+		Configs: []*structs.FederationState{
 			{
 				Datacenter: "dc-test1",
 				MeshGateways: []structs.CheckServiceNode{
@@ -409,37 +409,37 @@ func TestDatacenterConfig_List_ACLDeny(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, expected.Configs[0]))
-	require.NoError(t, state.DatacenterConfigSet(2, expected.Configs[1]))
+	require.NoError(t, state.FederationStateSet(1, expected.Configs[0]))
+	require.NoError(t, state.FederationStateSet(2, expected.Configs[1]))
 
 	{ // This should not work
-		args := structs.DatacenterConfigQuery{
+		args := structs.FederationStateQuery{
 			Datacenter:   "dc1",
 			QueryOptions: structs.QueryOptions{Token: nadaToken.SecretID},
 		}
-		var out structs.IndexedDatacenterConfigs
-		err := msgpackrpc.CallWithCodec(codec, "DatacenterConfig.List", &args, &out)
+		var out structs.IndexedFederationStates
+		err := msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out)
 		if !acl.IsErrPermissionDenied(err) {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	{ // This should work
-		args := structs.DatacenterConfigQuery{
+		args := structs.FederationStateQuery{
 			Datacenter:   "dc1",
 			QueryOptions: structs.QueryOptions{Token: opReadToken.SecretID},
 		}
-		var out structs.IndexedDatacenterConfigs
-		require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.List", &args, &out))
+		var out structs.IndexedFederationStates
+		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
 		// exclude dc1 which is written by a background routine on the leader and is not relevant
-		out.Configs = omitDatacenterConfig(out.Configs, "dc1")
+		out.Configs = omitFederationState(out.Configs, "dc1")
 
 		require.Equal(t, expected.Configs, out.Configs)
 	}
 }
 
-func TestDatacenterConfig_Delete(t *testing.T) {
+func TestFederationState_Delete(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServer(t)
@@ -464,8 +464,8 @@ func TestDatacenterConfig_Delete(t *testing.T) {
 	// wait for cross-dc queries to work
 	testrpc.WaitForLeader(t, s2.RPC, "dc1")
 
-	// Create a dummy dc config in the state store to look up.
-	dcConfig := &structs.DatacenterConfig{
+	// Create a dummy federation state in the state store to look up.
+	fedState := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -479,42 +479,42 @@ func TestDatacenterConfig_Delete(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, dcConfig))
+	require.NoError(t, state.FederationStateSet(1, fedState))
 
 	// Verify it's there
-	_, existing, err := state.DatacenterConfigGet(nil, "dc-test1")
+	_, existing, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
-	require.Equal(t, dcConfig, existing)
+	require.Equal(t, fedState, existing)
 
 	retry.Run(t, func(r *retry.R) {
 		// wait for it to be replicated into the secondary dc
 		state := s2.fsm.State()
-		_, dcConfig2Again, err := state.DatacenterConfigGet(nil, "dc-test1")
+		_, fedState2Again, err := state.FederationStateGet(nil, "dc-test1")
 		require.NoError(r, err)
-		require.NotNil(r, dcConfig2Again)
+		require.NotNil(r, fedState2Again)
 	})
 
 	// send the delete request to dc2 - it should get forwarded to dc1.
-	args := structs.DatacenterConfigRequest{
-		Config: dcConfig,
+	args := structs.FederationStateRequest{
+		Config: fedState,
 	}
 	out := false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "DatacenterConfig.Delete", &args, &out))
+	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Delete", &args, &out))
 
 	// Verify the entry was deleted.
-	_, existing, err = s1.fsm.State().DatacenterConfigGet(nil, "dc-test1")
+	_, existing, err = s1.fsm.State().FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
 	require.Nil(t, existing)
 
 	// verify it gets deleted from the secondary too
 	retry.Run(t, func(r *retry.R) {
-		_, existing, err := s2.fsm.State().DatacenterConfigGet(nil, "dc-test1")
+		_, existing, err := s2.fsm.State().FederationStateGet(nil, "dc-test1")
 		require.NoError(r, err)
 		require.Nil(r, existing)
 	})
 }
 
-func TestDatacenterConfig_Delete_ACLDeny(t *testing.T) {
+func TestFederationState_Delete_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
@@ -540,8 +540,8 @@ operator = "read"`)
 operator = "write"`)
 	require.NoError(t, err)
 
-	// Create a dummy dc config in the state store to look up.
-	dcConfig := &structs.DatacenterConfig{
+	// Create a dummy federation state in the state store to look up.
+	fedState := &structs.FederationState{
 		Datacenter: "dc-test1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
@@ -555,31 +555,31 @@ operator = "write"`)
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.DatacenterConfigSet(1, dcConfig))
+	require.NoError(t, state.FederationStateSet(1, fedState))
 
 	{ // This should not work
-		args := structs.DatacenterConfigRequest{
-			Config:       dcConfig,
+		args := structs.FederationStateRequest{
+			Config:       fedState,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
 		out := false
-		err := msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Delete", &args, &out)
+		err := msgpackrpc.CallWithCodec(codec, "FederationState.Delete", &args, &out)
 		if !acl.IsErrPermissionDenied(err) {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	{ // This should work
-		args := structs.DatacenterConfigRequest{
-			Config:       dcConfig,
+		args := structs.FederationStateRequest{
+			Config:       fedState,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
 		out := false
-		require.NoError(t, msgpackrpc.CallWithCodec(codec, "DatacenterConfig.Delete", &args, &out))
+		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Delete", &args, &out))
 	}
 
 	// Verify the entry was deleted.
-	_, existing, err := state.DatacenterConfigGet(nil, "dc-test1")
+	_, existing, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
 	require.Nil(t, existing)
 }

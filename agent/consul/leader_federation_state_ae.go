@@ -12,24 +12,24 @@ import (
 
 var (
 	// TODO: make this configurable; it's roughly the same sort of thing as the ae_interval knob that defaults to 1min
-	datacenterConfigAntiEntropyRefreshTimeout = 1 * time.Minute
+	federationStateAntiEntropyRefreshTimeout = 1 * time.Minute
 )
 
 // TODO: prune configs in the primary when the corresponding datacenter drops out of the catalog
 
-func (s *Server) startDatacenterConfigAntiEntropy() {
-	s.leaderRoutineManager.Start(datacenterConfigAntiEntropyRoutineName, s.datacenterConfigAntiEntropySync)
+func (s *Server) startFederationStateAntiEntropy() {
+	s.leaderRoutineManager.Start(federationStateAntiEntropyRoutineName, s.federationStateAntiEntropySync)
 }
 
-func (s *Server) stopDatacenterConfigAntiEntropy() {
-	s.leaderRoutineManager.Stop(datacenterConfigAntiEntropyRoutineName)
+func (s *Server) stopFederationStateAntiEntropy() {
+	s.leaderRoutineManager.Stop(federationStateAntiEntropyRoutineName)
 }
 
-func (s *Server) datacenterConfigAntiEntropySync(ctx context.Context) error {
+func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
 	var lastFetchIndex uint64
 
 	retryLoopBackoff(ctx.Done(), func() error {
-		idx, err := s.datacenterConfigAntiEntropyMaybeSync(lastFetchIndex)
+		idx, err := s.federationStateAntiEntropyMaybeSync(lastFetchIndex)
 		if err != nil {
 			return err
 		}
@@ -37,51 +37,51 @@ func (s *Server) datacenterConfigAntiEntropySync(ctx context.Context) error {
 		lastFetchIndex = idx
 		return nil
 	}, func(err error) {
-		s.logger.Printf("[ERR] leader: error performing anti-entropy sync of datacenter config: %v", err)
+		s.logger.Printf("[ERR] leader: error performing anti-entropy sync of federation state: %v", err)
 	})
 
 	return nil
 }
 
-func (s *Server) datacenterConfigAntiEntropyMaybeSync(lastFetchIndex uint64) (uint64, error) {
-	// TODO(rb): make this aware of the up-to-date-ness of the dcconfig replicator
+func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex uint64) (uint64, error) {
+	// TODO(rb): make this aware of the up-to-date-ness of the federation state replicator
 
 	queryOpts := &structs.QueryOptions{
-		MaxQueryTime:      datacenterConfigAntiEntropyRefreshTimeout,
+		MaxQueryTime:      federationStateAntiEntropyRefreshTimeout,
 		MinQueryIndex:     lastFetchIndex,
 		RequireConsistent: true,
 	}
 
-	idx, prev, curr, err := s.fetchDatacenterConfigAntiEntropyDetails(queryOpts)
+	idx, prev, curr, err := s.fetchFederationStateAntiEntropyDetails(queryOpts)
 	if err != nil {
 		return 0, err
 	}
 
 	if prev != nil && prev.IsSame(curr) {
-		s.logger.Printf("[DEBUG] leader: datacenter config anti-entropy sync skipped; already up to date")
+		s.logger.Printf("[DEBUG] leader: federation state anti-entropy sync skipped; already up to date")
 		return idx, nil
 	}
 
 	curr.UpdatedAt = time.Now().UTC()
 
-	args := structs.DatacenterConfigRequest{
+	args := structs.FederationStateRequest{
 		Config: curr,
 	}
 	ignored := false
-	if err := s.forwardDC("DatacenterConfig.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
-		return 0, fmt.Errorf("error performing datacenter config anti-entropy sync: %v", err)
+	if err := s.forwardDC("FederationState.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
+		return 0, fmt.Errorf("error performing federation state anti-entropy sync: %v", err)
 	}
 
-	s.logger.Printf("[INFO] leader: datacenter config anti-entropy synced")
+	s.logger.Printf("[INFO] leader: federation state anti-entropy synced")
 
 	return idx, nil
 }
 
-func (s *Server) fetchDatacenterConfigAntiEntropyDetails(
+func (s *Server) fetchFederationStateAntiEntropyDetails(
 	queryOpts *structs.QueryOptions,
-) (uint64, *structs.DatacenterConfig, *structs.DatacenterConfig, error) {
+) (uint64, *structs.FederationState, *structs.FederationState, error) {
 	var (
-		prevConfig, currConfig *structs.DatacenterConfig
+		prevConfig, currConfig *structs.FederationState
 		queryMeta              structs.QueryMeta
 	)
 	err := s.blockingQuery(
@@ -92,7 +92,7 @@ func (s *Server) fetchDatacenterConfigAntiEntropyDetails(
 			// We could phone home to get this but that would incur extra WAN traffic
 			// when we already have enough information locally to figure it out
 			// (assuming that our replicator is still functioning).
-			idx1, prev, err := state.DatacenterConfigGet(ws, s.config.Datacenter)
+			idx1, prev, err := state.FederationStateGet(ws, s.config.Datacenter)
 			if err != nil {
 				return err
 			}
@@ -104,7 +104,7 @@ func (s *Server) fetchDatacenterConfigAntiEntropyDetails(
 				return err
 			}
 
-			curr := &structs.DatacenterConfig{
+			curr := &structs.FederationState{
 				Datacenter:   s.config.Datacenter,
 				MeshGateways: raw,
 			}
