@@ -507,8 +507,8 @@ jobs:
           command: node_modules/ember-cli/bin/ember exam --split=$CIRCLE_NODE_TOTAL --partition=`expr $CIRCLE_NODE_INDEX + 1` --path dist --silent -r xunit
       - store_test_results:
           path: ui-v2/test-results
-  # run ember frontend unit tests to prodice coverage report
-  ember-test-coverage:
+  # run ember frontend unit tests to produce coverage report
+  ember-coverage:
     docker:
       - image: *EMBER_IMAGE
     steps:
