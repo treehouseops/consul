@@ -21,19 +21,15 @@ func (s *Server) stopFederationStateAntiEntropy() {
 }
 
 func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
-	var (
-		lastFetchIndex         uint64
-		lastPrimaryModifyIndex uint64
-	)
+	var lastFetchIndex uint64
 
 	retryLoopBackoff(ctx.Done(), func() error {
-		idx, primaryModifyIndex, err := s.federationStateAntiEntropyMaybeSync(lastFetchIndex, lastPrimaryModifyIndex)
+		idx, err := s.federationStateAntiEntropyMaybeSync(lastFetchIndex)
 		if err != nil {
 			return err
 		}
 
 		lastFetchIndex = idx
-		lastPrimaryModifyIndex = primaryModifyIndex
 		return nil
 	}, func(err error) {
 		s.logger.Printf("[ERR] leader: error performing anti-entropy sync of federation state: %v", err)
@@ -42,7 +38,7 @@ func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex, lastPrimaryModifyIndex uint64) (idx, primaryIdx uint64, err error) {
+func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex uint64) (uint64, error) {
 	queryOpts := &structs.QueryOptions{
 		MinQueryIndex:     lastFetchIndex,
 		RequireConsistent: true,
@@ -50,24 +46,12 @@ func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex, lastPrimary
 
 	idx, prev, curr, err := s.fetchFederationStateAntiEntropyDetails(queryOpts)
 	if err != nil {
-		return 0, 0, err
-	}
-
-	var prevPrimaryModifyIndex uint64
-	if prev != nil {
-		prevPrimaryModifyIndex = prev.PrimaryModifyIndex
+		return 0, err
 	}
 
 	if prev != nil && prev.IsSame(curr) {
 		s.logger.Printf("[DEBUG] leader: federation state anti-entropy sync skipped; already up to date")
-		return idx, prevPrimaryModifyIndex, nil
-	}
-
-	if lastPrimaryModifyIndex > 0 && prevPrimaryModifyIndex > 0 &&
-		prevPrimaryModifyIndex == lastPrimaryModifyIndex {
-		s.logger.Printf("[DEBUG] leader: federation state anti-entropy sync skipped; waiting for replication to locally apply changes lastIdx=%d prev=%d",
-			lastPrimaryModifyIndex, prevPrimaryModifyIndex)
-		return idx, prevPrimaryModifyIndex, nil
+		return idx, nil
 	}
 
 	curr.UpdatedAt = time.Now().UTC()
@@ -77,12 +61,12 @@ func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex, lastPrimary
 	}
 	ignored := false
 	if err := s.forwardDC("FederationState.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
-		return 0, 0, fmt.Errorf("error performing federation state anti-entropy sync: %v", err)
+		return 0, fmt.Errorf("error performing federation state anti-entropy sync: %v", err)
 	}
 
 	s.logger.Printf("[INFO] leader: federation state anti-entropy synced")
 
-	return idx, prevPrimaryModifyIndex, nil
+	return idx, nil
 }
 
 func (s *Server) fetchFederationStateAntiEntropyDetails(
