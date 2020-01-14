@@ -2,7 +2,11 @@ package consul
 
 import (
 	"bytes"
+	"encoding/binary"
+	"math"
+	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,7 +15,7 @@ import (
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/hashicorp/consul/testrpc"
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/net-rpc-msgpackrpc"
+	msgpackrpc "github.com/hashicorp/net-rpc-msgpackrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -314,4 +318,81 @@ func TestRPC_ReadyForConsistentReads(t *testing.T) {
 			r.Fatalf("Expected server to be ready for consistent reads, got error %v", err)
 		}
 	})
+}
+
+func TestRPC_readUint32(t *testing.T) {
+	cases := []struct {
+		name    string
+		writeFn func(net.Conn)
+		readFn  func(*testing.T, net.Conn)
+	}{
+		{
+			name: "timeouts irrelevant",
+			writeFn: func(conn net.Conn) {
+				_ = binary.Write(conn, binary.BigEndian, uint32(42))
+				_ = binary.Write(conn, binary.BigEndian, uint32(math.MaxUint32))
+				_ = binary.Write(conn, binary.BigEndian, uint32(1))
+			},
+			readFn: func(t *testing.T, conn net.Conn) {
+				t.Helper()
+				v, err := readUint32(conn, 5*time.Second)
+				require.NoError(t, err)
+				require.Equal(t, uint32(42), v)
+
+				v, err = readUint32(conn, 5*time.Second)
+				require.NoError(t, err)
+				require.Equal(t, uint32(math.MaxUint32), v)
+
+				v, err = readUint32(conn, 5*time.Second)
+				require.NoError(t, err)
+				require.Equal(t, uint32(1), v)
+			},
+		},
+		{
+			name: "triggers timeout on last read",
+			writeFn: func(conn net.Conn) {
+				_ = binary.Write(conn, binary.BigEndian, uint32(42))
+				_ = binary.Write(conn, binary.BigEndian, uint32(math.MaxUint32))
+				_ = binary.Write(conn, binary.BigEndian, uint16(1)) // half as many bytes as expected
+			},
+			readFn: func(t *testing.T, conn net.Conn) {
+				t.Helper()
+				v, err := readUint32(conn, 5*time.Second)
+				require.NoError(t, err)
+				require.Equal(t, uint32(42), v)
+
+				v, err = readUint32(conn, 5*time.Second)
+				require.NoError(t, err)
+				require.Equal(t, uint32(math.MaxUint32), v)
+
+				_, err = readUint32(conn, 50*time.Millisecond)
+				require.Error(t, err)
+				nerr, ok := err.(net.Error)
+				require.True(t, ok)
+				require.True(t, nerr.Timeout())
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var doneWg sync.WaitGroup
+			defer doneWg.Wait()
+
+			client, server := net.Pipe()
+			defer client.Close()
+			defer server.Close()
+
+			// Client pushes some data.
+			doneWg.Add(1)
+			go func() {
+				doneWg.Done()
+				tc.writeFn(client)
+			}()
+
+			// The server tests the function for us.
+			tc.readFn(t, server)
+		})
+	}
 }

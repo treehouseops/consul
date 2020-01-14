@@ -1,6 +1,7 @@
 package wanfed
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,22 @@ import (
 	"github.com/hashicorp/consul/agent/pool"
 	"github.com/hashicorp/consul/tlsutil"
 	"github.com/hashicorp/memberlist"
+)
+
+const (
+	// GossipPacketMaxIdleTime controls how long we keep an idle connection
+	// open to a server.
+	//
+	// Conceptually similar to: agent/consul/server.go:serverRPCCache
+	GossipPacketMaxIdleTime = 2 * time.Minute
+)
+
+const (
+	// serverRPCCache controls how long we keep an idle connection
+	// open to a server
+	//
+	// TODO: share with agent/consul/server.go:serverRPCCache
+	serverRPCCache = 2 * time.Minute
 )
 
 type MeshGatewayResolver func(datacenter string) string
@@ -35,12 +52,18 @@ func NewTransport(
 		return nil, errors.New("wanfed: gwResolver is nil")
 	}
 
+	cp, err := newConnPool(logger, GossipPacketMaxIdleTime)
+	if err != nil {
+		return nil, err
+	}
+
 	t := &Transport{
 		NodeAwareTransport: transport,
 		logger:             logger,
 		tlsConfigurator:    tlsConfigurator,
 		datacenter:         datacenter,
 		gwResolver:         gwResolver,
+		pool:               cp,
 	}
 	return t, nil
 }
@@ -52,9 +75,23 @@ type Transport struct {
 	tlsConfigurator *tlsutil.Configurator
 	datacenter      string
 	gwResolver      MeshGatewayResolver
+	pool            *connPool
 }
 
 var _ memberlist.NodeAwareTransport = (*Transport)(nil)
+
+func (t *Transport) Shutdown() error {
+	err1 := t.pool.Close()
+	err2 := t.NodeAwareTransport.Shutdown()
+	if err2 != nil {
+		// the more important error is err2
+		return err2
+	}
+	if err1 != nil {
+		return err1
+	}
+	return nil
+}
 
 func (t *Transport) WriteToAddress(b []byte, addr memberlist.Address) (time.Time, error) {
 	node, dc, err := splitNodeName(addr.Name)
@@ -71,13 +108,23 @@ func (t *Transport) WriteToAddress(b []byte, addr memberlist.Address) (time.Time
 			// TODO: return structs.ErrDCNotAvailable
 		}
 
-		conn, err := t.dial(dc, node, pool.ALPN_WANGossipPacket, gwAddr)
+		dialFunc := func() (net.Conn, error) {
+			return t.dial(dc, node, pool.ALPN_WANGossipPacket, gwAddr)
+		}
+		conn, err := t.pool.AcquireOrDial(addr.Name, dialFunc)
 		if err != nil {
 			return time.Time{}, err
 		}
-		defer conn.Close()
+		defer conn.ReturnOrClose()
+
+		// Send the length first.
+		if err := binary.Write(conn, binary.BigEndian, uint32(len(b))); err != nil {
+			conn.MarkFailed()
+			return time.Time{}, err
+		}
 
 		if _, err = conn.Write(b); err != nil {
+			conn.MarkFailed()
 			return time.Time{}, err
 		}
 

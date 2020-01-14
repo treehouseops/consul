@@ -2,6 +2,7 @@ package consul
 
 import (
 	"crypto/tls"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/consul/agent/consul/state"
+	"github.com/hashicorp/consul/agent/consul/wanfed"
 	"github.com/hashicorp/consul/agent/metadata"
 	"github.com/hashicorp/consul/agent/pool"
 	"github.com/hashicorp/consul/agent/structs"
@@ -179,8 +181,7 @@ func (s *Server) handleNativeTLS(conn net.Conn) {
 		s.handleSnapshotConn(tlsConn)
 
 	case pool.ALPN_WANGossipPacket:
-		// No need to defer the conn.Close() here, the Ingest methods do that.
-		if err := transport.IngestPacket(tlsConn, tlsConn.RemoteAddr(), time.Now()); err != nil {
+		if err := s.handleALPN_WANGossipPacketStream(tlsConn); err != nil && err != io.EOF {
 			s.logger.Printf("[ERR] consul.rpc: failed to ingest rpc sni=%q proto=%q: %v", sni, nextProto, err)
 		}
 
@@ -271,6 +272,63 @@ func (s *Server) handleSnapshotConn(conn net.Conn) {
 		}
 	}()
 }
+
+func (s *Server) handleALPN_WANGossipPacketStream(conn net.Conn) error {
+	defer conn.Close()
+
+	transport := s.memberlistTransportWAN
+	for {
+		select {
+		case <-s.shutdownCh:
+			return nil
+		default:
+		}
+
+		// Note: if we need to change this format to have additional header
+		// information we can just negotiate a different ALPN protocol instead
+		// of needing any sort of version field here.
+		prefixLen, err := readUint32(conn, wanfed.GossipPacketMaxIdleTime)
+		if err != nil {
+			return err
+		}
+
+		lc := &limitedConn{
+			Conn: conn,
+			lr:   io.LimitReader(conn, int64(prefixLen)),
+		}
+
+		if err := transport.IngestPacket(lc, conn.RemoteAddr(), time.Now()); err != nil {
+			return err
+		}
+	}
+}
+
+func readUint32(conn net.Conn, timeout time.Duration) (uint32, error) {
+	// Since requests are framed we can easily just set a deadline on
+	// reading that frame and then disable it for the rest of the body.
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return 0, err
+	}
+
+	var v uint32
+	if err := binary.Read(conn, binary.BigEndian, &v); err != nil {
+		return 0, err
+	}
+
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		return 0, err
+	}
+
+	return v, nil
+}
+
+type limitedConn struct {
+	net.Conn
+	lr io.Reader
+}
+
+func (c *limitedConn) Read(b []byte) (n int, err error) { return c.lr.Read(b) }
+func (c *limitedConn) Close() error                     { return nil /* ignore */ }
 
 // canRetry returns true if the given situation is safe for a retry.
 func canRetry(args interface{}, err error) bool {
