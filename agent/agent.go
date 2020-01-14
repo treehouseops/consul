@@ -1790,7 +1790,9 @@ func (a *Agent) JoinWAN(addrs []string) (n int, err error) {
 	return
 }
 
-// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
+// PrimaryMeshGatewayAddressesReadyCh returns a channel that will be closed
+// when federation state replication ships back at least one primary mesh
+// gateway (not via fallback config).
 func (a *Agent) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	if srv, ok := a.delegate.(*consul.Server); ok {
 		return srv.PrimaryMeshGatewayAddressesReadyCh()
@@ -1798,7 +1800,7 @@ func (a *Agent) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	return nil
 }
 
-// TODO: for testing
+// PickRandomMeshGatewaySuitableForDialing is a convenience function used for writing tests.
 func (a *Agent) PickRandomMeshGatewaySuitableForDialing(dc string) string {
 	if srv, ok := a.delegate.(*consul.Server); ok {
 		return srv.PickRandomMeshGatewaySuitableForDialing(dc)
@@ -1806,6 +1808,8 @@ func (a *Agent) PickRandomMeshGatewaySuitableForDialing(dc string) string {
 	return ""
 }
 
+// RefreshPrimaryGatewayFallbackAddresses is used to update the list of current
+// fallback addresses for locating mesh gateways in the primary datacenter.
 func (a *Agent) RefreshPrimaryGatewayFallbackAddresses(addrs []string) (int, error) {
 	if srv, ok := a.delegate.(*consul.Server); ok {
 		return srv.RefreshPrimaryGatewayFallbackAddresses(addrs)
