@@ -442,15 +442,13 @@ func (s *HTTPServer) AgentJoin(resp http.ResponseWriter, req *http.Request) (int
 	// Get the address
 	addr := strings.TrimPrefix(req.URL.Path, "/v1/agent/join/")
 
-	joinAddr := addr
-	if name := req.URL.Query().Get("name"); name != "" {
-		joinAddr = name + "/" + addr
-	}
-
 	if wan {
-		_, err = s.agent.JoinWAN([]string{joinAddr})
+		if s.agent.config.ConnectMeshGatewayWANFederationEnabled {
+			return nil, fmt.Errorf("WAN join is disabled when wan federation via mesh gateways is enabled")
+		}
+		_, err = s.agent.JoinWAN([]string{addr})
 	} else {
-		_, err = s.agent.JoinLAN([]string{joinAddr})
+		_, err = s.agent.JoinLAN([]string{addr})
 	}
 	return nil, err
 }
