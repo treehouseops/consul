@@ -66,6 +66,8 @@ func TestFederationState_Apply(t *testing.T) {
 	_, fedState2, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
 	require.NotNil(t, fedState2)
+	require.True(t, fedState2.PrimaryModifyIndex > 0, "this should be set")
+	fedState2.PrimaryModifyIndex = 0          // zero out so the equality works
 	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
 	require.Equal(t, args.State, fedState2)
 
@@ -103,6 +105,8 @@ func TestFederationState_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, fedState2)
 
+	require.True(t, fedState2.PrimaryModifyIndex > 0, "this should be set")
+	fedState2.PrimaryModifyIndex = 0          // zero out so the equality works
 	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
 	require.Equal(t, updated, fedState2)
 }
@@ -173,6 +177,8 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	_, got, err := state.FederationStateGet(nil, "dc-test1")
 	require.NoError(t, err)
 	require.NotNil(t, got)
+	require.True(t, got.PrimaryModifyIndex > 0, "this should be set")
+	got.PrimaryModifyIndex = 0          // zero out so the equality works
 	got.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
 	require.Equal(t, expected, got)
 }
