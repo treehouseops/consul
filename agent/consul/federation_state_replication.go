@@ -26,7 +26,7 @@ func diffFederationStates(local []*structs.FederationState, remote []*structs.Fe
 	var remoteIdx int
 	for localIdx, remoteIdx = 0, 0; localIdx < len(local) && remoteIdx < len(remote); {
 		if local[localIdx].Datacenter == remote[remoteIdx].Datacenter {
-			// config is in both the local and remote state - need to check raft indices
+			// fedState is in both the local and remote state - need to check raft indices
 			if remote[remoteIdx].ModifyIndex > lastRemoteIndex {
 				updates = append(updates, remote[remoteIdx])
 			}
@@ -34,13 +34,13 @@ func diffFederationStates(local []*structs.FederationState, remote []*structs.Fe
 			localIdx += 1
 			remoteIdx += 1
 		} else if local[localIdx].Datacenter < remote[remoteIdx].Datacenter {
-			// config no longer in remoted state - needs deleting
+			// fedState no longer in remoted state - needs deleting
 			deletions = append(deletions, local[localIdx])
 
 			// increment just the local index
 			localIdx += 1
 		} else {
-			// local state doesn't have this config - needs updating
+			// local state doesn't have this fedState - needs updating
 			updates = append(updates, remote[remoteIdx])
 
 			// increment just the remote index
@@ -73,7 +73,7 @@ func (s *Server) reconcileLocalFederationState(ctx context.Context, states []*st
 		req := structs.FederationStateRequest{
 			Op:         op,
 			Datacenter: s.config.Datacenter,
-			Config:     state2,
+			State:      state2,
 		}
 
 		resp, err := s.raftApply(structs.FederationStateRequestType, &req)
@@ -123,7 +123,7 @@ func (s *Server) replicateFederationState(ctx context.Context, lastRemoteIndex u
 		return 0, false, fmt.Errorf("failed to retrieve remote federation states: %v", err)
 	}
 
-	s.logger.Printf("[DEBUG] replication: finished fetching federation states: %d", len(remote.Configs))
+	s.logger.Printf("[DEBUG] replication: finished fetching federation states: %d", len(remote.States))
 
 	// Need to check if we should be stopping. This will be common as the fetching process is a blocking
 	// RPC which could have been hanging around for a long time and during that time leadership could
@@ -153,7 +153,7 @@ func (s *Server) replicateFederationState(ctx context.Context, lastRemoteIndex u
 	// raft indices. Instead we compare the raft modify index in the response object
 	// with the lastRemoteIndex (only when we already have a federation state of the same name)
 	// to determine if an update is needed. Resetting lastRemoteIndex to 0 then has the affect
-	// of making us think all the local state is out of date and any matching configs should
+	// of making us think all the local state is out of date and any matching fedStates should
 	// still be updated.
 	//
 	// The lastRemoteIndex is not used when the entry exists either only in the local state or
@@ -163,10 +163,10 @@ func (s *Server) replicateFederationState(ctx context.Context, lastRemoteIndex u
 		lastRemoteIndex = 0
 	}
 
-	s.logger.Printf("[DEBUG] replication: Federation State replication - local: %d, remote: %d", len(local), len(remote.Configs))
+	s.logger.Printf("[DEBUG] replication: Federation State replication - local: %d, remote: %d", len(local), len(remote.States))
 	// Calculate the changes required to bring the state into sync and then
 	// apply them.
-	deletions, updates := diffFederationStates(local, remote.Configs, lastRemoteIndex)
+	deletions, updates := diffFederationStates(local, remote.States, lastRemoteIndex)
 
 	s.logger.Printf("[DEBUG] replication: Federation State replication - deletions: %d, updates: %d", len(deletions), len(updates))
 

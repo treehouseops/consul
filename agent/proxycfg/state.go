@@ -733,14 +733,14 @@ func (s *state) handleUpdateMeshGateway(u cache.UpdateEvent, snap *ConfigSnapsho
 		}
 		snap.Roots = roots
 	case federationStateListWatchID:
-		configs, ok := u.Result.(*structs.IndexedFederationStates)
+		indexedStates, ok := u.Result.(*structs.IndexedFederationStates)
 		if !ok {
 			return fmt.Errorf("invalid type for response: %T", u.Result)
 		}
 
 		m := make(map[string]*structs.FederationState)
-		for _, config := range configs.Configs {
-			m[config.Datacenter] = config
+		for _, fedState := range indexedStates.States {
+			m[fedState.Datacenter] = fedState
 		}
 		snap.MeshGateway.FederationStates = m
 	case serviceListWatchID:

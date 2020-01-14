@@ -15,7 +15,7 @@ const (
 type FederationStateRequest struct {
 	Datacenter string
 	Op         FederationStateOp
-	Config     *FederationState
+	State      *FederationState
 
 	WriteRequest
 }
@@ -93,32 +93,15 @@ type FederationStateQuery struct {
 }
 
 type FederationStateResponse struct {
-	Config *FederationState
+	State *FederationState
 	QueryMeta
 }
 
 type IndexedFederationStates struct {
-	Configs FederationStates
+	States FederationStates
 	QueryMeta
 }
 
 func (c *FederationStateQuery) RequestDatacenter() string {
 	return c.TargetDatacenter
 }
-
-/*
-before saving we should have the caller filter the []CheckServiceNode by:
-
-func retainGateway(gateway structs.CheckServiceNode) bool {
-	for _, chk := range gateway.Checks {
-		if chk.Status == api.HealthCritical {
-			return false
-		}
-	}
-	return true
-}
-
-// TODO (mesh-gateway) - should we respect the translate_wan_addrs configuration here or just always use the wan for cross-dc?
-addr, port := gateway.BestAddress(true)
-
-*/

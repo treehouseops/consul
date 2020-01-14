@@ -440,12 +440,12 @@ func (s *snapshot) persistConfigEntries(sink raft.SnapshotSink,
 }
 
 func (s *snapshot) persistFederationStates(sink raft.SnapshotSink, encoder *codec.Encoder) error {
-	configs, err := s.state.FederationStates()
+	fedStates, err := s.state.FederationStates()
 	if err != nil {
 		return err
 	}
 
-	for _, config := range configs {
+	for _, fedState := range fedStates {
 		if _, err := sink.Write([]byte{byte(structs.FederationStateRequestType)}); err != nil {
 			return err
 		}
@@ -453,7 +453,7 @@ func (s *snapshot) persistFederationStates(sink raft.SnapshotSink, encoder *code
 		// The request is used for its custom decoding/encoding logic around the ConfigEntry
 		// interface.
 		req := &structs.FederationStateRequest{
-			Config: config,
+			State: fedState,
 		}
 		if err := encoder.Encode(req); err != nil {
 			return err
@@ -705,5 +705,5 @@ func restoreFederationState(header *snapshotHeader, restore *state.Restore, deco
 	if err := decoder.Decode(&req); err != nil {
 		return err
 	}
-	return restore.FederationState(req.Config)
+	return restore.FederationState(req.State)
 }

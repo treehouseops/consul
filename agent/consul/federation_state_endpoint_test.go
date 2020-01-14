@@ -43,7 +43,7 @@ func TestFederationState_Apply(t *testing.T) {
 
 	// update the primary with data from a secondary by way of request forwarding
 	args := structs.FederationStateRequest{
-		Config: &structs.FederationState{
+		State: &structs.FederationState{
 			Datacenter: "dc-test1",
 			MeshGateways: []structs.CheckServiceNode{
 				newTestMeshGatewayNode(
@@ -67,7 +67,7 @@ func TestFederationState_Apply(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, fedState2)
 	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
-	require.Equal(t, args.Config, fedState2)
+	require.Equal(t, args.State, fedState2)
 
 	retry.Run(t, func(r *retry.R) {
 		// wait for replication to happen
@@ -91,7 +91,7 @@ func TestFederationState_Apply(t *testing.T) {
 	}
 
 	args = structs.FederationStateRequest{
-		Config: updated,
+		State: updated,
 	}
 
 	out = false
@@ -147,7 +147,7 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	{ // This should fail since we don't have write perms.
 		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
-			Config:       expected,
+			State:        expected,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
 		out := false
@@ -160,7 +160,7 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	{ // This should work.
 		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
-			Config:       expected,
+			State:        expected,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
 		out := false
@@ -212,7 +212,7 @@ func TestFederationState_Get(t *testing.T) {
 	var out structs.FederationStateResponse
 	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
-	require.Equal(t, expected, out.Config)
+	require.Equal(t, expected, out.State)
 }
 
 func TestFederationState_Get_ACLDeny(t *testing.T) {
@@ -280,7 +280,7 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 		var out structs.FederationStateResponse
 		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
-		require.Equal(t, expected, out.Config)
+		require.Equal(t, expected, out.State)
 	}
 }
 
@@ -298,7 +298,7 @@ func TestFederationState_List(t *testing.T) {
 
 	// create some dummy data
 	expected := structs.IndexedFederationStates{
-		Configs: []*structs.FederationState{
+		States: []*structs.FederationState{
 			{
 				Datacenter: "dc-test1",
 				MeshGateways: []structs.CheckServiceNode{
@@ -327,8 +327,8 @@ func TestFederationState_List(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected.Configs[0]))
-	require.NoError(t, state.FederationStateSet(2, expected.Configs[1]))
+	require.NoError(t, state.FederationStateSet(1, expected.States[0]))
+	require.NoError(t, state.FederationStateSet(2, expected.States[1]))
 
 	args := structs.FederationStateQuery{
 		Datacenter: "dc1",
@@ -337,16 +337,16 @@ func TestFederationState_List(t *testing.T) {
 	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
 	// exclude dc1 which is written by a background routine on the leader and is not relevant
-	out.Configs = omitFederationState(out.Configs, "dc1")
+	out.States = omitFederationState(out.States, "dc1")
 
-	require.Equal(t, expected.Configs, out.Configs)
+	require.Equal(t, expected.States, out.States)
 }
 
 func omitFederationState(all []*structs.FederationState, omit string) []*structs.FederationState {
 	var out []*structs.FederationState
-	for _, config := range all {
-		if config.Datacenter != omit {
-			out = append(out, config)
+	for _, fedState := range all {
+		if fedState.Datacenter != omit {
+			out = append(out, fedState)
 		}
 	}
 	return out
@@ -380,7 +380,7 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 
 	// create some dummy data
 	expected := structs.IndexedFederationStates{
-		Configs: []*structs.FederationState{
+		States: []*structs.FederationState{
 			{
 				Datacenter: "dc-test1",
 				MeshGateways: []structs.CheckServiceNode{
@@ -409,8 +409,8 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 	}
 
 	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected.Configs[0]))
-	require.NoError(t, state.FederationStateSet(2, expected.Configs[1]))
+	require.NoError(t, state.FederationStateSet(1, expected.States[0]))
+	require.NoError(t, state.FederationStateSet(2, expected.States[1]))
 
 	{ // This should not work
 		args := structs.FederationStateQuery{
@@ -433,9 +433,9 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
 		// exclude dc1 which is written by a background routine on the leader and is not relevant
-		out.Configs = omitFederationState(out.Configs, "dc1")
+		out.States = omitFederationState(out.States, "dc1")
 
-		require.Equal(t, expected.Configs, out.Configs)
+		require.Equal(t, expected.States, out.States)
 	}
 }
 
@@ -496,7 +496,7 @@ func TestFederationState_Delete(t *testing.T) {
 
 	// send the delete request to dc2 - it should get forwarded to dc1.
 	args := structs.FederationStateRequest{
-		Config: fedState,
+		State: fedState,
 	}
 	out := false
 	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Delete", &args, &out))
@@ -559,7 +559,7 @@ operator = "write"`)
 
 	{ // This should not work
 		args := structs.FederationStateRequest{
-			Config:       fedState,
+			State:        fedState,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
 		out := false
@@ -571,7 +571,7 @@ operator = "write"`)
 
 	{ // This should work
 		args := structs.FederationStateRequest{
-			Config:       fedState,
+			State:        fedState,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
 		out := false

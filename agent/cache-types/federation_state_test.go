@@ -26,7 +26,7 @@ func TestFederationState(t *testing.T) {
 			require.True(t, req.AllowStale)
 
 			reply := args.Get(2).(*structs.IndexedFederationStates)
-			reply.Configs = []*structs.FederationState{
+			reply.States = []*structs.FederationState{
 				{
 					Datacenter: "dc9",
 					MeshGateways: []structs.CheckServiceNode{

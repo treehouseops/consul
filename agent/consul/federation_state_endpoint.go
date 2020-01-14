@@ -37,8 +37,8 @@ func (c *FederationState) Apply(args *structs.FederationStateRequest, reply *boo
 		return acl.ErrPermissionDenied
 	}
 
-	if args.Config.UpdatedAt.IsZero() {
-		args.Config.UpdatedAt = time.Now().UTC()
+	if args.State.UpdatedAt.IsZero() {
+		args.State.UpdatedAt = time.Now().UTC()
 	}
 
 	args.Op = structs.FederationStateUpsert
@@ -111,17 +111,17 @@ func (c *FederationState) Get(args *structs.FederationStateQuery, reply *structs
 		&args.QueryOptions,
 		&reply.QueryMeta,
 		func(ws memdb.WatchSet, state *state.Store) error {
-			index, config, err := state.FederationStateGet(ws, args.Datacenter)
+			index, fedState, err := state.FederationStateGet(ws, args.Datacenter)
 			if err != nil {
 				return err
 			}
 
 			reply.Index = index
-			if config == nil {
+			if fedState == nil {
 				return nil
 			}
 
-			reply.Config = config
+			reply.State = fedState
 			return nil
 		})
 }
@@ -146,18 +146,18 @@ func (c *FederationState) List(args *structs.DCSpecificRequest, reply *structs.I
 		&args.QueryOptions,
 		&reply.QueryMeta,
 		func(ws memdb.WatchSet, state *state.Store) error {
-			index, configs, err := state.FederationStateList(ws)
+			index, fedStates, err := state.FederationStateList(ws)
 			if err != nil {
 				return err
 			}
 
 			reply.Index = index
-			if len(configs) == 0 {
-				reply.Configs = []*structs.FederationState{}
+			if len(fedStates) == 0 {
+				reply.States = []*structs.FederationState{}
 				return nil
 			}
 
-			reply.Configs = configs
+			reply.States = fedStates
 			return nil
 		})
 }

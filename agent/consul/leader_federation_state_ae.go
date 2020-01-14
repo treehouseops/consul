@@ -10,7 +10,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
-// TODO: prune configs in the primary when the corresponding datacenter drops out of the catalog
+// TODO(rb): prune fed states in the primary when the corresponding datacenter drops out of the catalog
 
 func (s *Server) startFederationStateAntiEntropy() {
 	s.leaderRoutineManager.Start(federationStateAntiEntropyRoutineName, s.federationStateAntiEntropySync)
@@ -73,7 +73,7 @@ func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex, lastPrimary
 	curr.UpdatedAt = time.Now().UTC()
 
 	args := structs.FederationStateRequest{
-		Config: curr,
+		State: curr,
 	}
 	ignored := false
 	if err := s.forwardDC("FederationState.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
@@ -89,14 +89,14 @@ func (s *Server) fetchFederationStateAntiEntropyDetails(
 	queryOpts *structs.QueryOptions,
 ) (uint64, *structs.FederationState, *structs.FederationState, error) {
 	var (
-		prevConfig, currConfig *structs.FederationState
-		queryMeta              structs.QueryMeta
+		prevFedState, currFedState *structs.FederationState
+		queryMeta                  structs.QueryMeta
 	)
 	err := s.blockingQuery(
 		queryOpts,
 		&queryMeta,
 		func(ws memdb.WatchSet, state *state.Store) error {
-			// Get the existing stored version of this config that has replicated down.
+			// Get the existing stored version of this FedState that has replicated down.
 			// We could phone home to get this but that would incur extra WAN traffic
 			// when we already have enough information locally to figure it out
 			// (assuming that our replicator is still functioning).
@@ -123,8 +123,8 @@ func (s *Server) fetchFederationStateAntiEntropyDetails(
 				queryMeta.Index = idx1
 			}
 
-			prevConfig = prev
-			currConfig = curr
+			prevFedState = prev
+			currFedState = curr
 
 			return nil
 		})
@@ -132,5 +132,5 @@ func (s *Server) fetchFederationStateAntiEntropyDetails(
 		return 0, nil, nil, err
 	}
 
-	return queryMeta.Index, prevConfig, currConfig, nil
+	return queryMeta.Index, prevFedState, currFedState, nil
 }

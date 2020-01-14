@@ -552,16 +552,16 @@ func (c *FSM) applyFederationStateOperation(buf []byte, index uint64) interface{
 
 	switch req.Op {
 	case structs.FederationStateUpsert:
-		defer metrics.MeasureSinceWithLabels([]string{"fsm", "federation_state", req.Config.Datacenter}, time.Now(),
+		defer metrics.MeasureSinceWithLabels([]string{"fsm", "federation_state", req.State.Datacenter}, time.Now(),
 			[]metrics.Label{{Name: "op", Value: "upsert"}})
-		if err := c.state.FederationStateSet(index, req.Config); err != nil {
+		if err := c.state.FederationStateSet(index, req.State); err != nil {
 			return err
 		}
 		return true
 	case structs.FederationStateDelete:
-		defer metrics.MeasureSinceWithLabels([]string{"fsm", "federation_state", req.Config.Datacenter}, time.Now(),
+		defer metrics.MeasureSinceWithLabels([]string{"fsm", "federation_state", req.State.Datacenter}, time.Now(),
 			[]metrics.Label{{Name: "op", Value: "delete"}})
-		return c.state.FederationStateDelete(index, req.Config.Datacenter)
+		return c.state.FederationStateDelete(index, req.State.Datacenter)
 	default:
 		return fmt.Errorf("invalid federation state operation type: %v", req.Op)
 	}

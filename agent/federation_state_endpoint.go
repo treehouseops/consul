@@ -26,7 +26,7 @@ func (s *HTTPServer) FederationStateGet(resp http.ResponseWriter, req *http.Requ
 		return nil, err
 	}
 
-	if out.Config == nil {
+	if out.State == nil {
 		resp.WriteHeader(http.StatusNotFound)
 		return nil, nil
 	}
@@ -50,9 +50,9 @@ func (s *HTTPServer) FederationStateList(resp http.ResponseWriter, req *http.Req
 	}
 
 	// make sure we return an array and not nil
-	if out.Configs == nil {
-		out.Configs = make(structs.FederationStates, 0)
+	if out.States == nil {
+		out.States = make(structs.FederationStates, 0)
 	}
 
-	return out.Configs, nil
+	return out.States, nil
 }

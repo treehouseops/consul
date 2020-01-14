@@ -41,7 +41,7 @@ func TestReplication_FederationStates(t *testing.T) {
 	testrpc.WaitForLeader(t, s1.RPC, "dc2")
 
 	// Create some new federation states (weird because we're having dc1 update it for the other 50)
-	var states []*structs.FederationState
+	var fedStates []*structs.FederationState
 	for i := 0; i < 50; i++ {
 		dc := fmt.Sprintf("alt-dc%d", i+1)
 		ip1 := fmt.Sprintf("1.2.3.%d", i+1)
@@ -49,7 +49,7 @@ func TestReplication_FederationStates(t *testing.T) {
 		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
 			Op:         structs.FederationStateUpsert,
-			Config: &structs.FederationState{
+			State: &structs.FederationState{
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
@@ -65,7 +65,7 @@ func TestReplication_FederationStates(t *testing.T) {
 
 		out := false
 		require.NoError(t, s1.RPC("FederationState.Apply", &arg, &out))
-		states = append(states, arg.Config)
+		fedStates = append(fedStates, arg.State)
 	}
 
 	checkSame := func(t *retry.R) error {
@@ -98,7 +98,7 @@ func TestReplication_FederationStates(t *testing.T) {
 		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
 			Op:         structs.FederationStateUpsert,
-			Config: &structs.FederationState{
+			State: &structs.FederationState{
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
@@ -124,11 +124,11 @@ func TestReplication_FederationStates(t *testing.T) {
 		checkSame(r)
 	})
 
-	for _, state := range states {
+	for _, fedState := range fedStates {
 		arg := structs.FederationStateRequest{
 			Datacenter: "dc1",
 			Op:         structs.FederationStateDelete,
-			Config:     state,
+			State:      fedState,
 		}
 
 		out := false
