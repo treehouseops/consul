@@ -36,8 +36,20 @@ func (a *Agent) retryJoinWAN() {
 
 	var joinAddrs []string
 	if a.config.ConnectMeshGatewayWANFederationEnabled {
+		// When wanfed is activated each datacenter 100% relies upon flood-join
+		// to replicate the LAN members in a dc into the WAN pool. We
+		// completely hijack whatever the user configured to correctly
+		// implement the star-join.
+		//
+		// Elsewhere we enforce that start-join-wan and retry-join-wan cannot
+		// be set if wanfed is enabled so we don't have to emit any warnings
+		// related to that here.
+
 		if isPrimary {
-			return // secondaries join to the primary but not the other way around
+			// Wanfed requires that secondaries join TO the primary and the
+			// primary doesn't explicitly join down to the secondaries, so as
+			// such in the primary a retry-join operation is a no-op.
+			return
 		}
 
 		// First get a handle on dialing the primary
