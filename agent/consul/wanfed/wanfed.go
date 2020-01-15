@@ -19,6 +19,8 @@ const (
 	// open to a server.
 	//
 	// Conceptually similar to: agent/consul/server.go:serverRPCCache
+	//
+	// TODO(rb): should this actually be dynamically derived from the size of the wan pool?
 	GossipPacketMaxIdleTime = 2 * time.Minute
 )
 
