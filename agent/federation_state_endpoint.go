@@ -45,6 +45,7 @@ func (s *HTTPServer) FederationStateList(resp http.ResponseWriter, req *http.Req
 	}
 
 	var out structs.IndexedFederationStates
+	defer setMeta(resp, &out.QueryMeta)
 	if err := s.agent.RPC("FederationState.List", &args, &out); err != nil {
 		return nil, err
 	}

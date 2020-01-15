@@ -13,17 +13,17 @@ import (
 var (
 	// federationStatePruneInterval is how often we check for stale federation
 	// states to remove should a datacenter be removed from the WAN.
-	// federationStatePruneInterval = time.Hour
-	federationStatePruneInterval = time.Minute
+	federationStatePruneInterval = time.Hour
 )
-
-// TODO(rb): prune fed states in the primary when the corresponding datacenter drops out of the catalog
 
 func (s *Server) startFederationStateAntiEntropy() {
 	if s.config.DisableFederationStateAntiEntropy {
 		return
 	}
 	s.leaderRoutineManager.Start(federationStateAntiEntropyRoutineName, s.federationStateAntiEntropySync)
+
+	// If this is the primary, then also prune any stale datacenters from the
+	// list of federation states.
 	if s.config.PrimaryDatacenter == s.config.Datacenter {
 		s.leaderRoutineManager.Start(federationStatePruningRoutineName, s.federationStatePruning)
 	}
