@@ -17,6 +17,8 @@ func TestReplication_FederationStates(t *testing.T) {
 	t.Parallel()
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
 		c.PrimaryDatacenter = "dc1"
+		c.DisableFederationStateDatacenterNameValidation = true
+		c.DisableFederationStateAntiEntropy = true
 	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
@@ -30,6 +32,8 @@ func TestReplication_FederationStates(t *testing.T) {
 		c.FederationStateReplicationRate = 100
 		c.FederationStateReplicationBurst = 100
 		c.FederationStateReplicationApplyLimit = 1000000
+		c.DisableFederationStateDatacenterNameValidation = true
+		c.DisableFederationStateAntiEntropy = true
 	})
 	testrpc.WaitForLeader(t, s2.RPC, "dc2")
 	defer os.RemoveAll(dir2)
@@ -132,7 +136,7 @@ func TestReplication_FederationStates(t *testing.T) {
 		}
 
 		out := false
-		require.NoError(t, s1.RPC("FederationState.Delete", &arg, &out))
+		require.NoError(t, s1.RPC("FederationState.Apply", &arg, &out))
 	}
 
 	// Wait for the replica to converge.

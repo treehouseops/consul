@@ -441,8 +441,14 @@ type Config struct {
 	// datacenters should exclusively traverse mesh gateways.
 	ConnectMeshGatewayWANFederationEnabled bool
 
-	// DisableFederationStateAntiEntropy solely exists for use in unit tests to disable a background routine.
+	// DisableFederationStateAntiEntropy solely exists for use in unit tests to
+	// disable a background routine.
 	DisableFederationStateAntiEntropy bool
+
+	// DisableFederationStateDatacenterNameValidation solely exists for use in
+	// unit tests to allow federation states to be persisted that are not
+	// currently on the WAN.
+	DisableFederationStateDatacenterNameValidation bool
 
 	// CAConfig is used to apply the initial Connect CA configuration when
 	// bootstrapping.

@@ -10,7 +10,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
-var (
+const (
 	// federationStatePruneInterval is how often we check for stale federation
 	// states to remove should a datacenter be removed from the WAN.
 	federationStatePruneInterval = time.Hour
@@ -86,7 +86,9 @@ func (s *Server) federationStateAntiEntropyMaybeSync(ctx context.Context, lastFe
 	args := structs.FederationStateRequest{
 		Op:    structs.FederationStateUpsert,
 		State: curr,
-		// TODO: token
+		WriteRequest: structs.WriteRequest{
+			Token: s.tokens.ReplicationToken(),
+		},
 	}
 	ignored := false
 	if err := s.forwardDC("FederationState.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
