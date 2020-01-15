@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/consul/agent/consul/state"
 	"github.com/hashicorp/consul/agent/structs"
@@ -13,10 +12,6 @@ import (
 	"github.com/hashicorp/consul/ipaddr"
 	"github.com/hashicorp/consul/lib"
 	memdb "github.com/hashicorp/go-memdb"
-)
-
-var (
-	gatewayLocatorRefreshTimeout = 10 * time.Minute
 )
 
 // NOTE: this is ONLY for RPC and gossip so we only need to track local/primary
@@ -123,7 +118,6 @@ func (g *GatewayLocator) runOnce(lastFetchIndex uint64) (uint64, error) {
 	// this has drifted it's no different than a cache that drifts or an
 	// inconsistent read.
 	queryOpts := &structs.QueryOptions{
-		MaxQueryTime:      gatewayLocatorRefreshTimeout,
 		MinQueryIndex:     lastFetchIndex,
 		RequireConsistent: false,
 	}
