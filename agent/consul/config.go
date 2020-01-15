@@ -437,7 +437,8 @@ type Config struct {
 	// ConnectEnabled is whether to enable Connect features such as the CA.
 	ConnectEnabled bool
 
-	// TODO
+	// ConnectMeshGatewayWANFederationEnabled determines if wan federation of
+	// datacenters should exclusively traverse mesh gateways.
 	ConnectMeshGatewayWANFederationEnabled bool
 
 	// CAConfig is used to apply the initial Connect CA configuration when
