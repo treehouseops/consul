@@ -267,7 +267,8 @@ type Server struct {
 	// for the KV tombstones
 	tombstoneGC *state.TombstoneGC
 
-	// TODO:docs
+	// primaryMeshGatewayDiscoveredAddresses is the current fallback addresses
+	// for the mesh gateways in the primary datacenter.
 	primaryMeshGatewayDiscoveredAddresses     []string
 	primaryMeshGatewayDiscoveredAddressesLock sync.Mutex
 

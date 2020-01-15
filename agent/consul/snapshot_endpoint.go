@@ -199,8 +199,7 @@ func SnapshotRPC(
 	in io.Reader,
 	reply *structs.SnapshotResponse,
 ) (io.ReadCloser, error) {
-
-	// TODO: should this work dc-to-dc via a mesh gateway?
+	// TODO(rb): should this work dc-to-dc via a mesh gateway?
 	//
 	// Write the snapshot RPC byte to set the mode, then perform the
 	// request.

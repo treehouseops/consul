@@ -12,7 +12,7 @@ import (
 // remote servers. Idle connections only remain pooled for up to maxTime after
 // they were last acquired.
 type connPool struct {
-	logger *log.Logger // TODO
+	logger *log.Logger
 
 	// maxTime is the maximum time to keep a connection open.
 	maxTime time.Duration

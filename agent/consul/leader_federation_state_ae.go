@@ -166,7 +166,6 @@ func (s *Server) federationStatePruning(ctx context.Context) error {
 	}
 }
 
-// TODO: test
 func (s *Server) pruneStaleFederationStates() error {
 	state := s.fsm.State()
 	_, fedStates, err := state.FederationStateList(nil)

@@ -112,7 +112,7 @@ func (s *Store) federationStateSetTxn(tx *memdb.Txn, idx uint64, config *structs
 	}
 
 	if config.PrimaryModifyIndex == 0 {
-		// Since replication ordinarly would set this value for us, we can
+		// Since replication ordinarily would set this value for us, we can
 		// assume this is a write to the primary datacenter's federation state
 		// so we can just duplicate the new modify index.
 		config.PrimaryModifyIndex = idx
