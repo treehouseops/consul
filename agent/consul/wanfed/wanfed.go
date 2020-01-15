@@ -24,14 +24,6 @@ const (
 	GossipPacketMaxIdleTime = 2 * time.Minute
 )
 
-const (
-	// serverRPCCache controls how long we keep an idle connection
-	// open to a server
-	//
-	// TODO: share with agent/consul/server.go:serverRPCCache
-	serverRPCCache = 2 * time.Minute
-)
-
 type MeshGatewayResolver func(datacenter string) string
 
 func NewTransport(
