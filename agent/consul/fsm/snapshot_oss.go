@@ -453,6 +453,7 @@ func (s *snapshot) persistFederationStates(sink raft.SnapshotSink, encoder *code
 		// The request is used for its custom decoding/encoding logic around the ConfigEntry
 		// interface.
 		req := &structs.FederationStateRequest{
+			Op:    structs.FederationStateUpsert,
 			State: fedState,
 		}
 		if err := encoder.Encode(req); err != nil {

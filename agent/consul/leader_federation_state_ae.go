@@ -13,10 +13,16 @@ import (
 // TODO(rb): prune fed states in the primary when the corresponding datacenter drops out of the catalog
 
 func (s *Server) startFederationStateAntiEntropy() {
+	if s.config.DisableFederationStateAntiEntropy {
+		return
+	}
 	s.leaderRoutineManager.Start(federationStateAntiEntropyRoutineName, s.federationStateAntiEntropySync)
 }
 
 func (s *Server) stopFederationStateAntiEntropy() {
+	if s.config.DisableFederationStateAntiEntropy {
+		return
+	}
 	s.leaderRoutineManager.Stop(federationStateAntiEntropyRoutineName)
 }
 
@@ -24,7 +30,7 @@ func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
 	var lastFetchIndex uint64
 
 	retryLoopBackoff(ctx.Done(), func() error {
-		idx, err := s.federationStateAntiEntropyMaybeSync(lastFetchIndex)
+		idx, err := s.federationStateAntiEntropyMaybeSync(ctx, lastFetchIndex)
 		if err != nil {
 			return err
 		}
@@ -38,7 +44,7 @@ func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex uint64) (uint64, error) {
+func (s *Server) federationStateAntiEntropyMaybeSync(ctx context.Context, lastFetchIndex uint64) (uint64, error) {
 	queryOpts := &structs.QueryOptions{
 		MinQueryIndex:     lastFetchIndex,
 		RequireConsistent: true,
@@ -49,6 +55,13 @@ func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex uint64) (uin
 		return 0, err
 	}
 
+	// We should check to see if our context was cancelled while we were blocked.
+	select {
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	default:
+	}
+
 	if prev != nil && prev.IsSame(curr) {
 		s.logger.Printf("[DEBUG] leader: federation state anti-entropy sync skipped; already up to date")
 		return idx, nil
@@ -57,6 +70,7 @@ func (s *Server) federationStateAntiEntropyMaybeSync(lastFetchIndex uint64) (uin
 	curr.UpdatedAt = time.Now().UTC()
 
 	args := structs.FederationStateRequest{
+		Op:    structs.FederationStateUpsert,
 		State: curr,
 	}
 	ignored := false

@@ -1,6 +1,7 @@
 package consul
 
 import (
+	"net/rpc"
 	"os"
 	"testing"
 	"time"
@@ -16,10 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFederationState_Apply(t *testing.T) {
+func TestFederationState_Apply_Upsert(t *testing.T) {
 	t.Parallel()
 
-	dir1, s1 := testServer(t)
+	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
 	codec := rpcClient(t, s1)
@@ -30,6 +33,7 @@ func TestFederationState_Apply(t *testing.T) {
 	dir2, s2 := testServerWithConfig(t, func(c *Config) {
 		c.Datacenter = "dc2"
 		c.PrimaryDatacenter = "dc1"
+		c.DisableFederationStateAntiEntropy = true
 	})
 	defer os.RemoveAll(dir2)
 	defer s2.Shutdown()
@@ -42,39 +46,33 @@ func TestFederationState_Apply(t *testing.T) {
 	testrpc.WaitForLeader(t, s2.RPC, "dc1")
 
 	// update the primary with data from a secondary by way of request forwarding
-	args := structs.FederationStateRequest{
-		State: &structs.FederationState{
-			Datacenter: "dc-test1",
-			MeshGateways: []structs.CheckServiceNode{
-				newTestMeshGatewayNode(
-					"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
-				),
-				newTestMeshGatewayNode(
-					"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
-				),
-			},
-			UpdatedAt: time.Now().UTC(),
+	fedState := &structs.FederationState{
+		Datacenter: "dc1",
+		MeshGateways: []structs.CheckServiceNode{
+			newTestMeshGatewayNode(
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+			),
+			newTestMeshGatewayNode(
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+			),
 		},
+		UpdatedAt: time.Now().UTC(),
 	}
-	out := false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Apply", &args, &out))
-	require.True(t, out)
+	federationStateUpsert(t, codec2, "", fedState)
 
 	// the previous RPC should not return until the primary has been updated but will return
 	// before the secondary has the data.
 	state := s1.fsm.State()
-	_, fedState2, err := state.FederationStateGet(nil, "dc-test1")
+	_, fedState2, err := state.FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
 	require.NotNil(t, fedState2)
-	require.True(t, fedState2.PrimaryModifyIndex > 0, "this should be set")
-	fedState2.PrimaryModifyIndex = 0          // zero out so the equality works
-	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
-	require.Equal(t, args.State, fedState2)
+	zeroFedStateIndexes(t, fedState2)
+	require.Equal(t, fedState, fedState2)
 
 	retry.Run(t, func(r *retry.R) {
 		// wait for replication to happen
 		state := s2.fsm.State()
-		_, fedState2Again, err := state.FederationStateGet(nil, "dc-test1")
+		_, fedState2Again, err := state.FederationStateGet(nil, "dc1")
 		require.NoError(r, err)
 		require.NotNil(r, fedState2Again)
 
@@ -83,38 +81,29 @@ func TestFederationState_Apply(t *testing.T) {
 	})
 
 	updated := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway3", "9.9.9.9", 7777, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway3", "9.9.9.9", 7777, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-
-	args = structs.FederationStateRequest{
-		State: updated,
-	}
-
-	out = false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Apply", &args, &out))
-	require.True(t, out)
+	federationStateUpsert(t, codec2, "", updated)
 
 	state = s1.fsm.State()
-	_, fedState2, err = state.FederationStateGet(nil, "dc-test1")
+	_, fedState2, err = state.FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
 	require.NotNil(t, fedState2)
-
-	require.True(t, fedState2.PrimaryModifyIndex > 0, "this should be set")
-	fedState2.PrimaryModifyIndex = 0          // zero out so the equality works
-	fedState2.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
+	zeroFedStateIndexes(t, fedState2)
 	require.Equal(t, updated, fedState2)
 }
 
-func TestFederationState_Apply_ACLDeny(t *testing.T) {
+func TestFederationState_Apply_Upsert_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
 		c.ACLDatacenter = "dc1"
 		c.ACLsEnabled = true
 		c.ACLMasterToken = "root"
@@ -136,13 +125,13 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -151,6 +140,7 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	{ // This should fail since we don't have write perms.
 		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
+			Op:           structs.FederationStateUpsert,
 			State:        expected,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
@@ -164,6 +154,7 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	{ // This should work.
 		args := structs.FederationStateRequest{
 			Datacenter:   "dc1",
+			Op:           structs.FederationStateUpsert,
 			State:        expected,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
@@ -174,19 +165,19 @@ func TestFederationState_Apply_ACLDeny(t *testing.T) {
 	// the previous RPC should not return until the primary has been updated but will return
 	// before the secondary has the data.
 	state := s1.fsm.State()
-	_, got, err := state.FederationStateGet(nil, "dc-test1")
+	_, got, err := state.FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	require.True(t, got.PrimaryModifyIndex > 0, "this should be set")
-	got.PrimaryModifyIndex = 0          // zero out so the equality works
-	got.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
+	zeroFedStateIndexes(t, got)
 	require.Equal(t, expected, got)
 }
 
 func TestFederationState_Get(t *testing.T) {
 	t.Parallel()
 
-	dir1, s1 := testServer(t)
+	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
 
@@ -196,28 +187,27 @@ func TestFederationState_Get(t *testing.T) {
 	defer codec.Close()
 
 	expected := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected))
+	federationStateUpsert(t, codec, "", expected)
 
 	args := structs.FederationStateQuery{
-		Datacenter:       "dc-test1",
+		Datacenter:       "dc1",
 		TargetDatacenter: "dc1",
 	}
 	var out structs.FederationStateResponse
 	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
+	zeroFedStateIndexes(t, out.State)
 	require.Equal(t, expected, out.State)
 }
 
@@ -225,6 +215,7 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
 		c.ACLDatacenter = "dc1"
 		c.ACLsEnabled = true
 		c.ACLMasterToken = "root"
@@ -249,24 +240,22 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 
 	// create some dummy stuff to look up
 	expected := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected))
+	federationStateUpsert(t, codec, "root", expected)
 
 	{ // This should fail
 		args := structs.FederationStateQuery{
-			Datacenter:       "dc-test1",
+			Datacenter:       "dc1",
 			TargetDatacenter: "dc1",
 			QueryOptions:     structs.QueryOptions{Token: nadaToken.SecretID},
 		}
@@ -279,13 +268,14 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 
 	{ // This should work
 		args := structs.FederationStateQuery{
-			Datacenter:       "dc-test1",
+			Datacenter:       "dc1",
 			TargetDatacenter: "dc1",
 			QueryOptions:     structs.QueryOptions{Token: opReadToken.SecretID},
 		}
 		var out structs.FederationStateResponse
 		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Get", &args, &out))
 
+		zeroFedStateIndexes(t, out.State)
 		require.Equal(t, expected, out.State)
 	}
 }
@@ -293,48 +283,62 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 func TestFederationState_List(t *testing.T) {
 	t.Parallel()
 
-	dir1, s1 := testServer(t)
+	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
-
-	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
-
 	codec := rpcClient(t, s1)
 	defer codec.Close()
+
+	testrpc.WaitForLeader(t, s1.RPC, "dc1")
+
+	dir2, s2 := testServerWithConfig(t, func(c *Config) {
+		c.Datacenter = "dc2"
+		c.PrimaryDatacenter = "dc1"
+		c.DisableFederationStateAntiEntropy = true
+	})
+	defer os.RemoveAll(dir2)
+	defer s2.Shutdown()
+	codec2 := rpcClient(t, s2)
+	defer codec2.Close()
+
+	testrpc.WaitForLeader(t, s2.RPC, "dc2")
+	joinWAN(t, s2, s1)
+	// wait for cross-dc queries to work
+	testrpc.WaitForLeader(t, s2.RPC, "dc1")
 
 	// create some dummy data
 	expected := structs.IndexedFederationStates{
 		States: []*structs.FederationState{
 			{
-				Datacenter: "dc-test1",
+				Datacenter: "dc1",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
 			},
 			{
-				Datacenter: "dc-test2",
+				Datacenter: "dc2",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc-test2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc-test2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
 			},
 		},
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected.States[0]))
-	require.NoError(t, state.FederationStateSet(2, expected.States[1]))
+	federationStateUpsert(t, codec, "", expected.States[0])
+	federationStateUpsert(t, codec, "", expected.States[1])
 
 	args := structs.FederationStateQuery{
 		Datacenter: "dc1",
@@ -342,26 +346,20 @@ func TestFederationState_List(t *testing.T) {
 	var out structs.IndexedFederationStates
 	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
-	// exclude dc1 which is written by a background routine on the leader and is not relevant
-	out.States = omitFederationState(out.States, "dc1")
+	for i, _ := range out.States {
+		zeroFedStateIndexes(t, out.States[i])
+	}
 
 	require.Equal(t, expected.States, out.States)
-}
-
-func omitFederationState(all []*structs.FederationState, omit string) []*structs.FederationState {
-	var out []*structs.FederationState
-	for _, fedState := range all {
-		if fedState.Datacenter != omit {
-			out = append(out, fedState)
-		}
-	}
-	return out
 }
 
 func TestFederationState_List_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+		c.Datacenter = "dc1"
+		c.PrimaryDatacenter = "dc1"
 		c.ACLDatacenter = "dc1"
 		c.ACLsEnabled = true
 		c.ACLMasterToken = "root"
@@ -369,11 +367,29 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
-
-	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
-
 	codec := rpcClient(t, s1)
 	defer codec.Close()
+
+	testrpc.WaitForLeader(t, s1.RPC, "dc1")
+
+	dir2, s2 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+		c.Datacenter = "dc2"
+		c.PrimaryDatacenter = "dc1"
+		c.ACLDatacenter = "dc1"
+		c.ACLsEnabled = true
+		c.ACLMasterToken = "root"
+		c.ACLDefaultPolicy = "deny"
+	})
+	defer os.RemoveAll(dir2)
+	defer s2.Shutdown()
+	codec2 := rpcClient(t, s2)
+	defer codec2.Close()
+
+	testrpc.WaitForLeader(t, s2.RPC, "dc2")
+	joinWAN(t, s2, s1)
+	// wait for cross-dc queries to work
+	testrpc.WaitForLeader(t, s2.RPC, "dc1")
 
 	// Create the ACL tokens
 	nadaToken, err := upsertTestTokenWithPolicyRules(codec, "root", "dc1", `
@@ -388,35 +404,33 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 	expected := structs.IndexedFederationStates{
 		States: []*structs.FederationState{
 			{
-				Datacenter: "dc-test1",
+				Datacenter: "dc1",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
 			},
 			{
-				Datacenter: "dc-test2",
+				Datacenter: "dc2",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc-test2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc-test2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
 			},
 		},
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, expected.States[0]))
-	require.NoError(t, state.FederationStateSet(2, expected.States[1]))
+	federationStateUpsert(t, codec, "root", expected.States[0])
+	federationStateUpsert(t, codec, "root", expected.States[1])
 
 	{ // This should not work
 		args := structs.FederationStateQuery{
@@ -438,17 +452,20 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 		var out structs.IndexedFederationStates
 		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.List", &args, &out))
 
-		// exclude dc1 which is written by a background routine on the leader and is not relevant
-		out.States = omitFederationState(out.States, "dc1")
+		for i, _ := range out.States {
+			zeroFedStateIndexes(t, out.States[i])
+		}
 
 		require.Equal(t, expected.States, out.States)
 	}
 }
 
-func TestFederationState_Delete(t *testing.T) {
+func TestFederationState_Apply_Delete(t *testing.T) {
 	t.Parallel()
 
-	dir1, s1 := testServer(t)
+	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
+	})
 	defer os.RemoveAll(dir1)
 	defer s1.Shutdown()
 	codec := rpcClient(t, s1)
@@ -457,6 +474,7 @@ func TestFederationState_Delete(t *testing.T) {
 	testrpc.WaitForLeader(t, s1.RPC, "dc1")
 
 	dir2, s2 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
 		c.Datacenter = "dc2"
 		c.PrimaryDatacenter = "dc1"
 	})
@@ -472,58 +490,60 @@ func TestFederationState_Delete(t *testing.T) {
 
 	// Create a dummy federation state in the state store to look up.
 	fedState := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, fedState))
+	federationStateUpsert(t, codec, "", fedState)
 
 	// Verify it's there
-	_, existing, err := state.FederationStateGet(nil, "dc-test1")
+	state := s1.fsm.State()
+	_, existing, err := state.FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
+	zeroFedStateIndexes(t, existing)
 	require.Equal(t, fedState, existing)
 
 	retry.Run(t, func(r *retry.R) {
 		// wait for it to be replicated into the secondary dc
 		state := s2.fsm.State()
-		_, fedState2Again, err := state.FederationStateGet(nil, "dc-test1")
+		_, fedState2Again, err := state.FederationStateGet(nil, "dc1")
 		require.NoError(r, err)
 		require.NotNil(r, fedState2Again)
 	})
 
 	// send the delete request to dc2 - it should get forwarded to dc1.
 	args := structs.FederationStateRequest{
+		Op:    structs.FederationStateDelete,
 		State: fedState,
 	}
 	out := false
-	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Delete", &args, &out))
+	require.NoError(t, msgpackrpc.CallWithCodec(codec2, "FederationState.Apply", &args, &out))
 
 	// Verify the entry was deleted.
-	_, existing, err = s1.fsm.State().FederationStateGet(nil, "dc-test1")
+	_, existing, err = s1.fsm.State().FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
 	require.Nil(t, existing)
 
 	// verify it gets deleted from the secondary too
 	retry.Run(t, func(r *retry.R) {
-		_, existing, err := s2.fsm.State().FederationStateGet(nil, "dc-test1")
+		_, existing, err := s2.fsm.State().FederationStateGet(nil, "dc1")
 		require.NoError(r, err)
 		require.Nil(r, existing)
 	})
 }
 
-func TestFederationState_Delete_ACLDeny(t *testing.T) {
+func TestFederationState_Apply_Delete_ACLDeny(t *testing.T) {
 	t.Parallel()
 
 	dir1, s1 := testServerWithConfig(t, func(c *Config) {
+		c.DisableFederationStateAntiEntropy = true
 		c.ACLDatacenter = "dc1"
 		c.ACLsEnabled = true
 		c.ACLMasterToken = "root"
@@ -548,28 +568,27 @@ operator = "write"`)
 
 	// Create a dummy federation state in the state store to look up.
 	fedState := &structs.FederationState{
-		Datacenter: "dc-test1",
+		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc-test1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
 	}
-
-	state := s1.fsm.State()
-	require.NoError(t, state.FederationStateSet(1, fedState))
+	federationStateUpsert(t, codec, "root", fedState)
 
 	{ // This should not work
 		args := structs.FederationStateRequest{
+			Op:           structs.FederationStateDelete,
 			State:        fedState,
 			WriteRequest: structs.WriteRequest{Token: opReadToken.SecretID},
 		}
 		out := false
-		err := msgpackrpc.CallWithCodec(codec, "FederationState.Delete", &args, &out)
+		err := msgpackrpc.CallWithCodec(codec, "FederationState.Apply", &args, &out)
 		if !acl.IsErrPermissionDenied(err) {
 			t.Fatalf("err: %v", err)
 		}
@@ -577,15 +596,17 @@ operator = "write"`)
 
 	{ // This should work
 		args := structs.FederationStateRequest{
+			Op:           structs.FederationStateDelete,
 			State:        fedState,
 			WriteRequest: structs.WriteRequest{Token: opWriteToken.SecretID},
 		}
 		out := false
-		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Delete", &args, &out))
+		require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Apply", &args, &out))
 	}
 
 	// Verify the entry was deleted.
-	_, existing, err := state.FederationStateGet(nil, "dc-test1")
+	state := s1.fsm.State()
+	_, existing, err := state.FederationStateGet(nil, "dc1")
 	require.NoError(t, err)
 	require.Nil(t, existing)
 }
@@ -674,4 +695,25 @@ func newTestMeshGatewayNode(
 			},
 		},
 	}
+}
+
+func federationStateUpsert(t *testing.T, codec rpc.ClientCodec, token string, fedState *structs.FederationState) {
+	dup := *fedState
+	fedState2 := &dup
+
+	args := structs.FederationStateRequest{
+		Op:           structs.FederationStateUpsert,
+		State:        fedState2,
+		WriteRequest: structs.WriteRequest{Token: token},
+	}
+	out := false
+	require.NoError(t, msgpackrpc.CallWithCodec(codec, "FederationState.Apply", &args, &out))
+	require.True(t, out)
+}
+
+func zeroFedStateIndexes(t *testing.T, fedState *structs.FederationState) {
+	require.NotNil(t, fedState)
+	require.True(t, fedState.PrimaryModifyIndex > 0, "this should be set")
+	fedState.PrimaryModifyIndex = 0          // zero out so the equality works
+	fedState.RaftIndex = structs.RaftIndex{} // zero these out so the equality works
 }
