@@ -1050,7 +1050,9 @@ func (s *Server) JoinWAN(addrs []string) (int, error) {
 	return s.serfWAN.Join(addrs, true)
 }
 
-// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
+// PrimaryMeshGatewayAddressesReadyCh returns a channel that will be closed
+// when federation state replication ships back at least one primary mesh
+// gateway (not via fallback config).
 func (s *Server) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	if s.gatewayLocator == nil {
 		return nil
@@ -1058,7 +1060,7 @@ func (s *Server) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	return s.gatewayLocator.PrimaryMeshGatewayAddressesReadyCh()
 }
 
-// TODO: for testing
+// PickRandomMeshGatewaySuitableForDialing is a convenience function used for writing tests.
 func (s *Server) PickRandomMeshGatewaySuitableForDialing(dc string) string {
 	if s.gatewayLocator == nil {
 		return ""
@@ -1066,6 +1068,8 @@ func (s *Server) PickRandomMeshGatewaySuitableForDialing(dc string) string {
 	return s.gatewayLocator.PickGateway(dc)
 }
 
+// RefreshPrimaryGatewayFallbackAddresses is used to update the list of current
+// fallback addresses for locating mesh gateways in the primary datacenter.
 func (s *Server) RefreshPrimaryGatewayFallbackAddresses(addrs []string) (int, error) {
 	sort.Strings(addrs)
 
@@ -1083,6 +1087,8 @@ func (s *Server) RefreshPrimaryGatewayFallbackAddresses(addrs []string) (int, er
 	return len(addrs), nil
 }
 
+// PrimaryGatewayFallbackAddresses returns the current set of discovered
+// fallback addresses for the mesh gateways in the primary datacenter.
 func (s *Server) PrimaryGatewayFallbackAddresses() []string {
 	s.primaryMeshGatewayDiscoveredAddressesLock.Lock()
 	defer s.primaryMeshGatewayDiscoveredAddressesLock.Unlock()

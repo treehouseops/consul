@@ -14,6 +14,9 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
+// GatewayLocator assists in selecting an appropriate mesh gateway when wan
+// federation via mesh gateways is enabled.
+//
 // NOTE: this is ONLY for RPC and gossip so we only need to track local/primary
 type GatewayLocator struct {
 	logger            *log.Logger
@@ -30,11 +33,15 @@ type GatewayLocator struct {
 	primaryGatewaysReadyCh chan struct{}
 }
 
-// TODO : this will be closed when federation states ship back at least one primary mgw (does not count fallback)
+// PrimaryMeshGatewayAddressesReadyCh returns a channel that will be closed
+// when federation state replication ships back at least one primary mesh
+// gateway (not via fallback config).
 func (g *GatewayLocator) PrimaryMeshGatewayAddressesReadyCh() <-chan struct{} {
 	return g.primaryGatewaysReadyCh
 }
 
+// PickGateway returns the address for a gateway suitable for reaching the
+// provided datacenter.
 func (g *GatewayLocator) PickGateway(dc string) string {
 	item := g.pickGateway(dc == g.primaryDatacenter)
 	g.logger.Printf("[TRACE] consul.gatewayLocator: picking %q for %s -> %s transit", item, g.datacenter, dc)
