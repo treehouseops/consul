@@ -10,6 +10,13 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
+var (
+	// federationStatePruneInterval is how often we check for stale federation
+	// states to remove should a datacenter be removed from the WAN.
+	// federationStatePruneInterval = time.Hour
+	federationStatePruneInterval = time.Minute
+)
+
 // TODO(rb): prune fed states in the primary when the corresponding datacenter drops out of the catalog
 
 func (s *Server) startFederationStateAntiEntropy() {
@@ -17,6 +24,9 @@ func (s *Server) startFederationStateAntiEntropy() {
 		return
 	}
 	s.leaderRoutineManager.Start(federationStateAntiEntropyRoutineName, s.federationStateAntiEntropySync)
+	if s.config.PrimaryDatacenter == s.config.Datacenter {
+		s.leaderRoutineManager.Start(federationStatePruningRoutineName, s.federationStatePruning)
+	}
 }
 
 func (s *Server) stopFederationStateAntiEntropy() {
@@ -24,6 +34,9 @@ func (s *Server) stopFederationStateAntiEntropy() {
 		return
 	}
 	s.leaderRoutineManager.Stop(federationStateAntiEntropyRoutineName)
+	if s.config.PrimaryDatacenter == s.config.Datacenter {
+		s.leaderRoutineManager.Stop(federationStatePruningRoutineName)
+	}
 }
 
 func (s *Server) federationStateAntiEntropySync(ctx context.Context) error {
@@ -48,6 +61,7 @@ func (s *Server) federationStateAntiEntropyMaybeSync(ctx context.Context, lastFe
 	queryOpts := &structs.QueryOptions{
 		MinQueryIndex:     lastFetchIndex,
 		RequireConsistent: true,
+		Token:             s.tokens.ReplicationToken(),
 	}
 
 	idx, prev, curr, err := s.fetchFederationStateAntiEntropyDetails(queryOpts)
@@ -72,6 +86,7 @@ func (s *Server) federationStateAntiEntropyMaybeSync(ctx context.Context, lastFe
 	args := structs.FederationStateRequest{
 		Op:    structs.FederationStateUpsert,
 		State: curr,
+		// TODO: token
 	}
 	ignored := false
 	if err := s.forwardDC("FederationState.Apply", s.config.PrimaryDatacenter, &args, &ignored); err != nil {
@@ -131,4 +146,54 @@ func (s *Server) fetchFederationStateAntiEntropyDetails(
 	}
 
 	return queryMeta.Index, prevFedState, currFedState, nil
+}
+
+func (s *Server) federationStatePruning(ctx context.Context) error {
+	ticker := time.NewTicker(federationStatePruneInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if err := s.pruneStaleFederationStates(); err != nil {
+				s.logger.Printf("[ERR] leader: error pruning stale federation states: %v", err)
+			}
+		}
+	}
+}
+
+// TODO: test
+func (s *Server) pruneStaleFederationStates() error {
+	state := s.fsm.State()
+	_, fedStates, err := state.FederationStateList(nil)
+	if err != nil {
+		return err
+	}
+
+	for _, fedState := range fedStates {
+		dc := fedState.Datacenter
+		if s.router.HasDatacenter(dc) {
+			continue
+		}
+
+		s.logger.Printf("[INFO] leader: pruning stale federation state for datacenter %q", dc)
+
+		req := structs.FederationStateRequest{
+			Op: structs.FederationStateDelete,
+			State: &structs.FederationState{
+				Datacenter: dc,
+			},
+		}
+		resp, err := s.raftApply(structs.FederationStateRequestType, &req)
+		if err != nil {
+			return fmt.Errorf("Failed to delete federation state %s: %v", dc, err)
+		}
+		if respErr, ok := resp.(error); ok && err != nil {
+			return fmt.Errorf("Failed to delete federation state %s: %v", dc, respErr)
+		}
+	}
+
+	return nil
 }

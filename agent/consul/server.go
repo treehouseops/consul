@@ -101,6 +101,7 @@ const (
 	configReplicationRoutineName          = "config entry replication"
 	federationStateReplicationRoutineName = "federation state replication"
 	federationStateAntiEntropyRoutineName = "federation state anti-entropy"
+	federationStatePruningRoutineName     = "federation state pruning"
 	intentionReplicationRoutineName       = "intention replication"
 	secondaryCARootWatchRoutineName       = "secondary CA roots watch"
 	secondaryCertRenewWatchRoutineName    = "secondary cert renew watch"
