@@ -2,5 +2,7 @@
 
 set -eEuo pipefail
 
+consul members -wan
+
 gen_envoy_bootstrap mesh-gateway 19000 primary true
 retry_default docker_consul primary curl -s "http://localhost:8500/v1/catalog/service/consul?dc=secondary" >/dev/null

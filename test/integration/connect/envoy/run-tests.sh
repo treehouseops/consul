@@ -208,6 +208,12 @@ function initVars {
   fi
 }
 
+function preSetup {
+  if [ -f "${CASE_DIR}pre-setup.sh" ] ; then
+    source "${CASE_DIR}pre-setup.sh"
+  fi
+}
+
 function runTest {
   initVars
 
@@ -218,6 +224,8 @@ function runTest {
   then
     init_workdir secondary
   fi
+
+  preSetup
 
   # Wipe state
   docker-compose up wipe-volumes
