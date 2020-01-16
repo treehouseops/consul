@@ -208,9 +208,9 @@ function initVars {
   fi
 }
 
-function preSetup {
-  if [ -f "${CASE_DIR}pre-setup.sh" ] ; then
-    source "${CASE_DIR}pre-setup.sh"
+function global_setup {
+  if [ -f "${CASE_DIR}global-setup.sh" ] ; then
+    source "${CASE_DIR}global-setup.sh"
   fi
 }
 
@@ -225,7 +225,7 @@ function runTest {
     init_workdir secondary
   fi
 
-  preSetup
+  global_setup
 
   # Wipe state
   docker-compose up wipe-volumes
