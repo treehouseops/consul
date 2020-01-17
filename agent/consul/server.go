@@ -361,7 +361,6 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 	connPool := &pool.ConnPool{
 		SrcAddr:         config.RPCSrcAddr,
 		LogOutput:       config.LogOutput,
-		Logger:          logger,
 		MaxTime:         serverRPCCache,
 		MaxStreams:      serverMaxStreams,
 		TLSConfigurator: tlsConfigurator,

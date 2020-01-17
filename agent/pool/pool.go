@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/rpc"
 	"sync"
@@ -129,8 +128,6 @@ type ConnPool struct {
 
 	// LogOutput is used to control logging
 	LogOutput io.Writer
-
-	Logger *log.Logger // TODO
 
 	// The maximum time to keep a connection open
 	MaxTime time.Duration
@@ -305,7 +302,6 @@ func (p *ConnPool) DialTimeout(
 			p.TLSConfigurator,
 			p.GatewayResolver,
 			p.Datacenter,
-			p.Logger, // TODO REMOVE
 		)
 	}
 
@@ -428,7 +424,6 @@ func DialTimeoutWithRPCTypeViaMeshGateway(
 	tlsConfigurator *tlsutil.Configurator,
 	gatewayResolver func(string) string,
 	thisDatacenter string,
-	logger *log.Logger, // TODO(rb) remove this
 ) (net.Conn, HalfCloser, error) {
 	if gatewayResolver == nil {
 		return nil, nil, fmt.Errorf("gatewayResolver is nil")
@@ -440,7 +435,6 @@ func DialTimeoutWithRPCTypeViaMeshGateway(
 		return nil, nil, fmt.Errorf("cannot dial via a mesh gateway when outgoing TLS is disabled")
 	}
 
-	// TODO(rb): maybe just make this work?
 	nextProto := actualRPCType.ALPNString()
 	if nextProto == "" {
 		return nil, nil, fmt.Errorf("rpc type %d cannot be routed through a mesh gateway", actualRPCType)
@@ -449,12 +443,7 @@ func DialTimeoutWithRPCTypeViaMeshGateway(
 	gwAddr := gatewayResolver(dc)
 	if gwAddr == "" {
 		return nil, nil, fmt.Errorf("could not find suitable mesh gateway to dial dc=%q", dc)
-		// TODO(rb): return structs.ErrDCNotAvailable
-	}
-
-	if logger != nil {
-		logger.Printf("[DEBUG] pool.rpc: dialing dc=%q node=%q proto=%q via mgw-addr=%q",
-			dc, nodeName, nextProto, gwAddr)
+		// TODO(rb): return structs.ErrDCNotAvailable?
 	}
 
 	dialer := &net.Dialer{LocalAddr: src, Timeout: timeout}
@@ -488,7 +477,7 @@ func DialTimeoutWithRPCTypeViaMeshGateway(
 
 // getNewConn is used to return a new connection
 func (p *ConnPool) getNewConn(dc string, nodeName string, addr net.Addr, version int, useTLS bool) (*Conn, error) {
-	if nodeName == "" { // TODO
+	if nodeName == "" {
 		return nil, fmt.Errorf("pool: ConnPool.getNewConn requires a node name")
 	}
 
@@ -527,7 +516,7 @@ func (p *ConnPool) getNewConn(dc string, nodeName string, addr net.Addr, version
 
 // clearConn is used to clear any cached connection, potentially in response to an error
 func (p *ConnPool) clearConn(conn *Conn) {
-	if conn.nodeName == "" { // TODO
+	if conn.nodeName == "" {
 		panic("pool: ConnPool.acquire requires a node name")
 	}
 
@@ -594,7 +583,7 @@ func (p *ConnPool) RPC(
 	args interface{},
 	reply interface{},
 ) error {
-	if nodeName == "" { // TODO
+	if nodeName == "" {
 		return fmt.Errorf("pool: ConnPool.RPC requires a node name")
 	}
 

@@ -31,17 +31,14 @@ func NewTransport(
 	tlsConfigurator *tlsutil.Configurator,
 	transport memberlist.NodeAwareTransport,
 	datacenter string,
-	gwResolver MeshGatewayResolver, // TODO: move this to the router? FindGatewayRoute?
+	gwResolver MeshGatewayResolver,
 ) (*Transport, error) {
-	// TODO(rb)
 	if logger == nil {
 		return nil, errors.New("wanfed: logger is nil")
 	}
-	// TODO(rb)
 	if tlsConfigurator == nil {
 		return nil, errors.New("wanfed: tlsConfigurator is nil")
 	}
-	// TODO(rb)
 	if gwResolver == nil {
 		return nil, errors.New("wanfed: gwResolver is nil")
 	}
@@ -99,7 +96,7 @@ func (t *Transport) WriteToAddress(b []byte, addr memberlist.Address) (time.Time
 		gwAddr := t.gwResolver(dc)
 		if gwAddr == "" {
 			return time.Time{}, fmt.Errorf("could not find suitable mesh gateway to dial dc=%q", dc)
-			// TODO: return structs.ErrDCNotAvailable
+			// TODO(rb): return structs.ErrDCNotAvailable?
 		}
 
 		dialFunc := func() (net.Conn, error) {
@@ -140,7 +137,7 @@ func (t *Transport) DialAddressTimeout(addr memberlist.Address, timeout time.Dur
 		gwAddr := t.gwResolver(dc)
 		if gwAddr == "" {
 			return nil, fmt.Errorf("could not find suitable mesh gateway to dial dc=%q", dc)
-			// TODO: return structs.ErrDCNotAvailable
+			// TODO(rb): return structs.ErrDCNotAvailable?
 		}
 
 		return t.dial(dc, node, pool.ALPN_WANGossipStream, gwAddr)

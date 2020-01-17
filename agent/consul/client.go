@@ -129,7 +129,6 @@ func NewClientLogger(config *Config, logger *log.Logger, tlsConfigurator *tlsuti
 	connPool := &pool.ConnPool{
 		SrcAddr:         config.RPCSrcAddr,
 		LogOutput:       config.LogOutput,
-		Logger:          logger,
 		MaxTime:         clientRPCConnMaxIdle,
 		MaxStreams:      clientMaxStreams,
 		TLSConfigurator: tlsConfigurator,
