@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -euo pipefail
-
 TLS_DIR="workdir/tls/${CASE_NAME}"
 
 rm -rf "${TLS_DIR}"
@@ -28,8 +26,6 @@ output_files=(
     secondary-server-consul-0.pem
 )
 for f in "${output_files[@]}"; do
-    echo "copying $f out of container..."
     docker cp "${container}:/out/$f" "${TLS_DIR}"
 done
 docker rm -f "$container" >/dev/null || true
-echo "clean exit"
