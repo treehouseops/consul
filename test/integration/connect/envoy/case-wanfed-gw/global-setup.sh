@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo "RUNNING PRESETUP"
-
 TLS_DIR="workdir/tls/${CASE_DIR}"
 
 rm -rf "${TLS_DIR}"
