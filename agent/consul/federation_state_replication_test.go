@@ -57,10 +57,10 @@ func TestReplication_FederationStates(t *testing.T) {
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						dc, "gateway1", ip1, 443, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						dc, "gateway1", ip1, 443, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						dc, "gateway2", ip2, 443, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						dc, "gateway2", ip2, 443, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
@@ -106,13 +106,13 @@ func TestReplication_FederationStates(t *testing.T) {
 				Datacenter: dc,
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						dc, "gateway1", ip1, 8443, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						dc, "gateway1", ip1, 8443, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						dc, "gateway2", ip2, 8443, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						dc, "gateway2", ip2, 8443, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						dc, "gateway3", ip3, 8443, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						dc, "gateway3", ip3, 8443, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),

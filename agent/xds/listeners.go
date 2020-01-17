@@ -539,7 +539,7 @@ func (s *Server) makeGatewayListener(name, addr string, port int, cfgSnap *proxy
 		})
 	}
 
-	if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil {
+	if cfgSnap.ServiceMeta[structs.MetaWANFederationKey] == "1" && cfgSnap.ServerSNIFn != nil {
 		for _, dc := range datacenters {
 			clusterName := cfgSnap.ServerSNIFn(dc, "")
 			filterName := fmt.Sprintf("%s_%s", name, dc)

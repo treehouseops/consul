@@ -212,7 +212,7 @@ func (g *GatewayLocator) updateFromState(results []*structs.FederationState) {
 func retainGateways(full structs.CheckServiceNodes) structs.CheckServiceNodes {
 	out := make([]structs.CheckServiceNode, 0, len(full))
 	for _, csn := range full {
-		if csn.Service.Meta["wanfed"] != "1" {
+		if csn.Service.Meta[structs.MetaWANFederationKey] != "1" {
 			continue
 		}
 

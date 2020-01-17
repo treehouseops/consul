@@ -4169,7 +4169,7 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 			Kind: structs.ServiceKindMeshGateway,
 			ID:   "mesh-gateway",
 			Name: "mesh-gateway",
-			Meta: map[string]string{"wanfed": "1"},
+			Meta: map[string]string{structs.MetaWANFederationKey: "1"},
 			Port: gwPort[0],
 		}
 		req, err := http.NewRequest("PUT", "/v1/agent/service/register", jsonReader(args))
@@ -4281,7 +4281,7 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 			Kind: structs.ServiceKindMeshGateway,
 			ID:   "mesh-gateway",
 			Name: "mesh-gateway",
-			Meta: map[string]string{"wanfed": "1"},
+			Meta: map[string]string{structs.MetaWANFederationKey: "1"},
 			Port: gwPort[0],
 		}
 		req, err := http.NewRequest("PUT", "/v1/agent/service/register", jsonReader(args))
@@ -4296,7 +4296,7 @@ func TestAgent_JoinWAN_viaMeshGateway(t *testing.T) {
 			Kind: structs.ServiceKindMeshGateway,
 			ID:   "mesh-gateway",
 			Name: "mesh-gateway",
-			Meta: map[string]string{"wanfed": "1"},
+			Meta: map[string]string{structs.MetaWANFederationKey: "1"},
 			Port: gwPort[0],
 		}
 		req, err := http.NewRequest("PUT", "/v1/agent/service/register", jsonReader(args))

@@ -138,9 +138,13 @@ type ConnPool struct {
 	// TLSConfigurator
 	TLSConfigurator *tlsutil.Configurator
 
-	// TODO
+	// GatewayResolver is a function that returns a suitable random mesh
+	// gateway address for dialing servers in a given DC. This is only
+	// needed if wan federation via mesh gateways is enabled.
 	GatewayResolver func(string) string
-	Datacenter      string
+
+	// Datacenter is the datacenter of the current agent.
+	Datacenter string
 
 	// ForceTLS is used to enforce outgoing TLS verification
 	ForceTLS bool

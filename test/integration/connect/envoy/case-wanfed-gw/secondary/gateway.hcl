@@ -3,6 +3,6 @@ services {
   kind = "mesh-gateway"
   port = 4432
   meta {
-    wanfed = "1"
+    wan-federation = "1"
   }
 }

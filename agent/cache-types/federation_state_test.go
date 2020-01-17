@@ -42,7 +42,7 @@ func TestFederationState(t *testing.T) {
 								Service: "mesh-gateway",
 								Kind:    structs.ServiceKindMeshGateway,
 								Port:    1111,
-								Meta:    map[string]string{"wanfed": "1"},
+								Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 							},
 							Checks: []*structs.HealthCheck{
 								{
@@ -64,7 +64,7 @@ func TestFederationState(t *testing.T) {
 								Service: "mesh-gateway",
 								Kind:    structs.ServiceKindMeshGateway,
 								Port:    2222,
-								Meta:    map[string]string{"wanfed": "1"},
+								Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 							},
 							Checks: []*structs.HealthCheck{
 								{

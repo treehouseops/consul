@@ -178,7 +178,7 @@ func (s *Server) endpointsFromSnapshotMeshGateway(cfgSnap *proxycfg.ConfigSnapsh
 			resources = append(resources, la)
 		}
 
-		if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil && dc != cfgSnap.Datacenter {
+		if cfgSnap.ServiceMeta[structs.MetaWANFederationKey] == "1" && cfgSnap.ServerSNIFn != nil && dc != cfgSnap.Datacenter {
 			clusterName := cfgSnap.ServerSNIFn(dc, "")
 
 			la := makeLoadAssignment(
@@ -192,7 +192,7 @@ func (s *Server) endpointsFromSnapshotMeshGateway(cfgSnap *proxycfg.ConfigSnapsh
 		}
 	}
 
-	if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil {
+	if cfgSnap.ServiceMeta[structs.MetaWANFederationKey] == "1" && cfgSnap.ServerSNIFn != nil {
 		// generate endpoints for our servers
 
 		var allServersLbEndpoints []envoyendpoint.LbEndpoint

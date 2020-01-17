@@ -20,10 +20,10 @@ func TestGatewayLocator(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -32,10 +32,10 @@ func TestGatewayLocator(t *testing.T) {
 		Datacenter: "dc2",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc2", "gateway1", "5.6.7.8", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc2", "gateway1", "5.6.7.8", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc2", "gateway2", "8.7.6.5", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc2", "gateway2", "8.7.6.5", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),

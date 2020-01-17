@@ -131,7 +131,7 @@ func (s *Server) clustersFromSnapshotMeshGateway(cfgSnap *proxycfg.ConfigSnapsho
 		clusters = append(clusters, cluster)
 	}
 
-	if cfgSnap.ServiceMeta["wanfed"] == "1" && cfgSnap.ServerSNIFn != nil {
+	if cfgSnap.ServiceMeta[structs.MetaWANFederationKey] == "1" && cfgSnap.ServerSNIFn != nil {
 		// Add all of the remote wildcard datacenter mappings for servers.
 		for _, dc := range datacenters {
 			clusterName := cfgSnap.ServerSNIFn(dc, "")

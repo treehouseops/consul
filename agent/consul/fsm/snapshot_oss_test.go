@@ -290,7 +290,7 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 					Service: "mesh-gateway",
 					Kind:    structs.ServiceKindMeshGateway,
 					Port:    1111,
-					Meta:    map[string]string{"wanfed": "1"},
+					Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 				},
 				Checks: []*structs.HealthCheck{
 					{
@@ -312,7 +312,7 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 					Service: "mesh-gateway",
 					Kind:    structs.ServiceKindMeshGateway,
 					Port:    2222,
-					Meta:    map[string]string{"wanfed": "1"},
+					Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 				},
 				Checks: []*structs.HealthCheck{
 					{
@@ -340,7 +340,7 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 					Service: "mesh-gateway",
 					Kind:    structs.ServiceKindMeshGateway,
 					Port:    3333,
-					Meta:    map[string]string{"wanfed": "1"},
+					Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 				},
 				Checks: []*structs.HealthCheck{
 					{
@@ -362,7 +362,7 @@ func TestFSM_SnapshotRestore_OSS(t *testing.T) {
 					Service: "mesh-gateway",
 					Kind:    structs.ServiceKindMeshGateway,
 					Port:    4444,
-					Meta:    map[string]string{"wanfed": "1"},
+					Meta:    map[string]string{structs.MetaWANFederationKey: "1"},
 				},
 				Checks: []*structs.HealthCheck{
 					{

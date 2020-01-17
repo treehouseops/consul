@@ -66,8 +66,7 @@ type ManagerConfig struct {
 	// for now and cleaner than passing the entire RuntimeConfig.
 	Source *structs.QuerySource
 	// logger is the agent's logger to be used for logging logs.
-	Logger *log.Logger
-	// TODO
+	Logger          *log.Logger
 	TLSConfigurator *tlsutil.Configurator
 }
 

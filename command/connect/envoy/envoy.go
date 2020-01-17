@@ -319,7 +319,7 @@ func (c *cmd) Run(args []string) int {
 
 		var meta map[string]string
 		if c.exposeServers {
-			meta = map[string]string{"wanfed": "1"}
+			meta = map[string]string{structs.MetaWANFederationKey: "1"}
 		}
 
 		svc := api.AgentServiceRegistration{

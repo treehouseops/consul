@@ -50,10 +50,10 @@ func TestFederationState_Apply_Upsert(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -84,7 +84,7 @@ func TestFederationState_Apply_Upsert(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway3", "9.9.9.9", 7777, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway3", "9.9.9.9", 7777, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -128,10 +128,10 @@ func TestFederationState_Apply_Upsert_ACLDeny(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -190,10 +190,10 @@ func TestFederationState_Get(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -243,10 +243,10 @@ func TestFederationState_Get_ACLDeny(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -315,10 +315,10 @@ func TestFederationState_List(t *testing.T) {
 				Datacenter: "dc1",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
@@ -327,10 +327,10 @@ func TestFederationState_List(t *testing.T) {
 				Datacenter: "dc2",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
@@ -407,10 +407,10 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 				Datacenter: "dc1",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
@@ -419,10 +419,10 @@ func TestFederationState_List_ACLDeny(t *testing.T) {
 				Datacenter: "dc2",
 				MeshGateways: []structs.CheckServiceNode{
 					newTestMeshGatewayNode(
-						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway1", "5.6.7.8", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 					newTestMeshGatewayNode(
-						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{"wanfed": "1"}, api.HealthPassing,
+						"dc2", "gateway2", "8.7.6.5", 1111, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 					),
 				},
 				UpdatedAt: time.Now().UTC(),
@@ -493,10 +493,10 @@ func TestFederationState_Apply_Delete(t *testing.T) {
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),
@@ -571,10 +571,10 @@ operator = "write"`)
 		Datacenter: "dc1",
 		MeshGateways: []structs.CheckServiceNode{
 			newTestMeshGatewayNode(
-				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway1", "1.2.3.4", 5555, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 			newTestMeshGatewayNode(
-				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{"wanfed": "1"}, api.HealthPassing,
+				"dc1", "gateway2", "4.3.2.1", 9999, map[string]string{structs.MetaWANFederationKey: "1"}, api.HealthPassing,
 			),
 		},
 		UpdatedAt: time.Now().UTC(),

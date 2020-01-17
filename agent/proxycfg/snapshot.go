@@ -109,7 +109,7 @@ func (s *ConfigSnapshot) Valid() bool {
 	case structs.ServiceKindConnectProxy:
 		return s.Roots != nil && s.ConnectProxy.Leaf != nil
 	case structs.ServiceKindMeshGateway:
-		if s.ServiceMeta["wanfed"] == "1" {
+		if s.ServiceMeta[structs.MetaWANFederationKey] == "1" {
 			if len(s.MeshGateway.ConsulServers) == 0 {
 				return false
 			}

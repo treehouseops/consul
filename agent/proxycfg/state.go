@@ -339,7 +339,7 @@ func (s *state) initWatchesMeshGateway() error {
 		return err
 	}
 
-	if s.meta["wanfed"] == "1" {
+	if s.meta[structs.MetaWANFederationKey] == "1" {
 		// TODO(wanfed): conveniently we can just use this attribute in one
 		// place here to set the machinery in motion and leave the conditional
 		// behavior out of the rest
