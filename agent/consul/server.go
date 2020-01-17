@@ -425,11 +425,14 @@ func NewServerLogger(config *Config, logger *log.Logger, tokens *token.Store, tl
 	}
 
 	federationStateReplicatorConfig := ReplicatorConfig{
-		Name:     "Federation State",
-		Delegate: &FunctionReplicator{ReplicateFn: s.replicateFederationState},
-		Rate:     s.config.FederationStateReplicationRate,
-		Burst:    s.config.FederationStateReplicationBurst,
-		Logger:   logger,
+		Name: "Federation State",
+		Delegate: &IndexReplicator{
+			Delegate: &FederationStateReplicator{srv: s},
+			Logger:   s.logger,
+		},
+		Rate:   s.config.FederationStateReplicationRate,
+		Burst:  s.config.FederationStateReplicationBurst,
+		Logger: logger,
 	}
 	s.federationStateReplicator, err = NewReplicator(&federationStateReplicatorConfig)
 	if err != nil {
