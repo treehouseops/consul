@@ -1,9 +1,10 @@
 #!/bin/bash
 
-TLS_DIR="workdir/tls/${CASE_NAME}"
-
-rm -rf "${TLS_DIR}"
-mkdir -p "${TLS_DIR}"
+# initialize the outputs for each dc
+for dc in primary secondary; do
+    rm -rf "workdir/${dc}/tls"
+    mkdir -p "workdir/${dc}/tls"
+done
 
 readonly container="consul-envoy-integ-tls-init--${CASE_NAME}"
 
@@ -17,15 +18,23 @@ consul tls cert create -dc=secondary -server -additional-dnsname='sec.server.sec
 
 docker rm -f "$container" &>/dev/null || true
 docker run -i --net=none --name="$container" consul-dev:latest sh -c "${scriptlet}"
-output_files=(
-    consul-agent-ca-key.pem
-    consul-agent-ca.pem
-    primary-server-consul-0-key.pem
-    primary-server-consul-0.pem
-    secondary-server-consul-0-key.pem
-    secondary-server-consul-0.pem
-)
-for f in "${output_files[@]}"; do
-    docker cp "${container}:/out/$f" "${TLS_DIR}"
+
+# primary
+for f in \
+    consul-agent-ca.pem \
+    primary-server-consul-0-key.pem \
+    primary-server-consul-0.pem \
+    ; do
+    docker cp "${container}:/out/$f" workdir/primary/tls
 done
+
+# secondary
+for f in \
+    consul-agent-ca.pem \
+    secondary-server-consul-0-key.pem \
+    secondary-server-consul-0.pem \
+    ; do
+    docker cp "${container}:/out/$f" workdir/secondary/tls
+done
+
 docker rm -f "$container" >/dev/null || true

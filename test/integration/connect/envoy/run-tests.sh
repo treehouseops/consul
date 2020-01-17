@@ -222,9 +222,6 @@ function global_setup {
 function runTest {
   initVars
 
-  # make sure we do any initialization BEFORE we populate the workdir volume
-  global_setup
-
   # Initialize the workdir
   init_workdir primary
 
@@ -232,6 +229,8 @@ function runTest {
   then
     init_workdir secondary
   fi
+
+  global_setup
 
   # Wipe state
   docker-compose up wipe-volumes
