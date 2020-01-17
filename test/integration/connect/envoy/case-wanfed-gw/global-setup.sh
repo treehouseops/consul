@@ -28,6 +28,8 @@ output_files=(
     secondary-server-consul-0.pem
 )
 for f in "${output_files[@]}"; do
+    echo "copying $f out of container..."
     docker cp "${container}:/out/$f" "${TLS_DIR}"
 done
-docker rm -f "$container" >/dev/null
+docker rm -f "$container" >/dev/null || true
+echo "clean exit"
