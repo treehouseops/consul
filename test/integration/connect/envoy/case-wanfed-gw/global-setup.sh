@@ -2,12 +2,12 @@
 
 set -euo pipefail
 
-TLS_DIR="workdir/tls/${CASE_DIR}"
+TLS_DIR="workdir/tls/${CASE_NAME}"
 
 rm -rf "${TLS_DIR}"
 mkdir -p "${TLS_DIR}"
 
-readonly container="consul-envoy-integ-tls-init--${CASE_DIR}"
+readonly container="consul-envoy-integ-tls-init--${CASE_NAME}"
 
 readonly scriptlet="
 mkdir /out ;
