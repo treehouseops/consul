@@ -1,5 +1,10 @@
 #!/bin/bash
 
+###
+export STOP_ON_FAIL=1
+export FILTER_TESTS=wanfed-gw
+###
+
 set -eEuo pipefail
 
 # DEBUG=1 enables set -x for this script so echos every command run
