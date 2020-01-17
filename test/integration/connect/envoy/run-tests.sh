@@ -231,9 +231,16 @@ function runTest {
   fi
 
   global_setup
+  echo ">>>dump1"
+  find workdir |sort
+  echo "<<<dump1"
 
   # Wipe state
   docker-compose up wipe-volumes
+
+  echo ">>>dump2"
+  find workdir |sort
+  echo "<<<dump2"
 
   # Push the state to the shared docker volume (note this is because CircleCI
   # can't use shared volumes)
