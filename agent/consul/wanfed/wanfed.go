@@ -91,7 +91,8 @@ func (t *Transport) WriteToAddress(b []byte, addr memberlist.Address) (time.Time
 	}
 
 	if dc != t.datacenter {
-		t.logger.Printf("[DEBUG] wanfed.packet: dest.dc=%q in src.dc=%q", dc, t.datacenter)
+		// TODO(rb): remove
+		// t.logger.Printf("[DEBUG] wanfed.packet: dest.dc=%q in src.dc=%q", dc, t.datacenter)
 
 		gwAddr := t.gwResolver(dc)
 		if gwAddr == "" {
@@ -132,7 +133,8 @@ func (t *Transport) DialAddressTimeout(addr memberlist.Address, timeout time.Dur
 	}
 
 	if dc != t.datacenter {
-		t.logger.Printf("[DEBUG] wanfed.stream: dest.dc=%q in src.dc=%q", dc, t.datacenter)
+		// TODO(rb): remove
+		// t.logger.Printf("[DEBUG] wanfed.stream: dest.dc=%q in src.dc=%q", dc, t.datacenter)
 
 		gwAddr := t.gwResolver(dc)
 		if gwAddr == "" {
@@ -148,8 +150,8 @@ func (t *Transport) DialAddressTimeout(addr memberlist.Address, timeout time.Dur
 
 // NOTE: There is a close mirror of this method in agent/pool/pool.go:DialTimeoutWithRPCType
 func (t *Transport) dial(dc, nodeName, nextProto, addr string) (net.Conn, error) {
-	t.logger.Printf("[DEBUG] wanfed: dialing dc=%q node=%q proto=%q via mgw-addr=%q",
-		dc, nodeName, nextProto, addr)
+	// TODO(rb): remove
+	// t.logger.Printf("[DEBUG] wanfed: dialing dc=%q node=%q proto=%q via mgw-addr=%q", dc, nodeName, nextProto, addr)
 
 	wrapper := t.tlsConfigurator.OutgoingALPNRPCWrapper()
 	if wrapper == nil {

@@ -78,7 +78,6 @@ func (p *connPool) AcquireOrDial(key string, dialer func() (net.Conn, error)) (*
 	}
 	if c != nil {
 		c.markForUse()
-		p.logger.Printf("[DEBUG] wanfed: reusing conn for %q", key)
 		return c, nil
 	}
 
@@ -93,7 +92,6 @@ func (p *connPool) AcquireOrDial(key string, dialer func() (net.Conn, error)) (*
 		Conn: nc,
 	}
 	c.markForUse()
-	p.logger.Printf("[DEBUG] wanfed: new conn for %q", key)
 
 	return c, nil
 }
@@ -138,13 +136,10 @@ func (p *connPool) returnConn(c *conn) error {
 	defer p.mu.Unlock()
 
 	if p.shutdown {
-		p.logger.Printf("[DEBUG] wanfed: auto-closing returned conn for %q", c.key)
 		return c.Conn.Close() // actual shutdown
 	}
 
 	p.pool[c.key] = append(p.pool[c.key], c)
-
-	p.logger.Printf("[DEBUG] wanfed: returning conn for %q", c.key)
 
 	return nil
 }
@@ -188,7 +183,7 @@ func (p *connPool) reapOnce() {
 				retain = append(retain, c)
 			} else {
 				c.Conn.Close()
-				p.logger.Printf("[DEBUG] wanfed: reaping old conn for %q", c.key)
+				p.logger.Printf("[TRACE] wanfed: reaping old conn for %q", c.key)
 			}
 		}
 
@@ -235,7 +230,6 @@ func (c *conn) ReturnOrClose() error {
 	}
 
 	if failed {
-		c.pool.logger.Printf("[DEBUG] wanfed: reaping failed conn for %q", c.key)
 		return c.Conn.Close()
 	}
 
@@ -252,7 +246,6 @@ func (c *conn) Close() error {
 		return nil
 	}
 
-	c.pool.logger.Printf("[DEBUG] wanfed: closing conn for %q", c.key)
 	return c.Conn.Close()
 }
 
