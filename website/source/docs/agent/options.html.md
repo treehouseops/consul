@@ -432,10 +432,12 @@ The options below are all specified on the command-line.
   This is useful for cases where we know the address will become available eventually.
   [Cloud Auto-Joining](#cloud-auto-joining) is supported as well as [go-sockaddr](https://godoc.org/github.com/hashicorp/go-sockaddr/template)
   templates.
+  This was added in Consul 1.7.x **TODO(rb)**.
 
 * <a name="_primary_gateways_interval"></a><a href="#_primary_gateways_interval">`-primary-gateways-interval`</a> - Time
   to wait between [`-primary-gateways`](#_primary_gateways) discovery attempts.
   Defaults to 30s.
+  This was added in Consul 1.7.x **TODO(rb)**.
 
 * <a name="_raft_protocol"></a><a href="#_raft_protocol">`-raft-protocol`</a> - This controls the internal
   version of the Raft consensus protocol used for server communications. This must be set to 3 in order to
@@ -913,6 +915,7 @@ default will automatically work with some tooling.
       href="#connect_enable_mesh_gateway_wan_federation">`enable_mesh_gateway_wan_federation`</a>
       Controls whether cross-datacenter federation traffic between servers is
       funneled through mesh gateways.  Defaults to false.
+      This was added in Consul 1.7.x **TODO(rb)**.
 
     * <a name="connect_ca_provider"></a><a href="#connect_ca_provider">`ca_provider`</a> Controls
       which CA provider to use for Connect's CA. Currently only the `consul` and `vault` providers
@@ -1511,9 +1514,11 @@ default will automatically work with some tooling.
   of addresses to use as the mesh gateways for the primary datacenter when authoritative
   replicated catalog data is not present. Discovery happens every [`primary_gateways_interval`](#_primary_gateways_interval) until at least one
   primary mesh gateway is discovered.
+  This was added in Consul 1.7.x **TODO(rb)**.
 
 * <a name="primary_gateways_interval"></a><a href="#primary_gateways_interval">`primary_gateways_interval`</a> Equivalent to the
   [`-primary-gateways-interval` command-line flag](#_primary_gateways_interval).
+  This was added in Consul 1.7.x **TODO(rb)**.
 
 * <a name="protocol"></a><a href="#protocol">`protocol`</a> Equivalent to the
   [`-protocol` command-line flag](#_protocol).
