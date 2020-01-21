@@ -221,7 +221,8 @@ type Config struct {
 	// meaning nodes cannot be reclaimed this way.
 	DeadNodeReclaimTime time.Duration
 
-	// TODO: docs
+	// RequireNodeNames controls if the name of a node is required when sending
+	// a message to that node.
 	RequireNodeNames bool
 }
 

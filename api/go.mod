@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-rootcerts v1.0.0
 	github.com/hashicorp/go-uuid v1.0.1
-	github.com/hashicorp/serf v0.8.6-0.20200113193835-683479ef6d95
+	github.com/hashicorp/serf v0.8.6-0.20200121220933-379a52af78b6
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/stretchr/testify v1.3.0
 )

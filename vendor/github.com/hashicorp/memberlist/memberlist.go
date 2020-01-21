@@ -32,7 +32,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-var errNodeNamesAreRequired = errors.New("memberlist: node names are required by configuration but was not provided")
+var errNodeNamesAreRequired = errors.New("memberlist: node names are required by configuration but one was not provided")
 
 type Memberlist struct {
 	sequenceNum uint32 // Local sequence number
@@ -260,7 +260,7 @@ func (m *Memberlist) Join(existing []string) (int, error) {
 
 		for _, addr := range addrs {
 			hp := joinHostPort(addr.ip.String(), addr.port)
-			a := Address{Addr: hp, Name: addr.routeTag}
+			a := Address{Addr: hp, Name: addr.nodeName}
 			if err := m.pushPullNode(a, true); err != nil {
 				err = fmt.Errorf("Failed to join %s: %v", addr.ip, err)
 				errs = multierror.Append(errs, err)
@@ -281,7 +281,7 @@ func (m *Memberlist) Join(existing []string) (int, error) {
 type ipPort struct {
 	ip       net.IP
 	port     uint16
-	routeTag string // optional
+	nodeName string // optional
 }
 
 // tcpLookupIP is a helper to initiate a TCP-based DNS lookup for the given host.
@@ -290,7 +290,7 @@ type ipPort struct {
 // Consul's. By doing the TCP lookup directly, we get the best chance for the
 // largest list of hosts to join. Since joins are relatively rare events, it's ok
 // to do this rather expensive operation.
-func (m *Memberlist) tcpLookupIP(host string, defaultPort uint16, routeTag string) ([]ipPort, error) {
+func (m *Memberlist) tcpLookupIP(host string, defaultPort uint16, nodeName string) ([]ipPort, error) {
 	// Don't attempt any TCP lookups against non-fully qualified domain
 	// names, since those will likely come from the resolv.conf file.
 	if !strings.Contains(host, ".") {
@@ -332,9 +332,9 @@ func (m *Memberlist) tcpLookupIP(host string, defaultPort uint16, routeTag strin
 		for _, r := range in.Answer {
 			switch rr := r.(type) {
 			case (*dns.A):
-				ips = append(ips, ipPort{ip: rr.A, port: defaultPort, routeTag: routeTag})
+				ips = append(ips, ipPort{ip: rr.A, port: defaultPort, nodeName: nodeName})
 			case (*dns.AAAA):
-				ips = append(ips, ipPort{ip: rr.AAAA, port: defaultPort, routeTag: routeTag})
+				ips = append(ips, ipPort{ip: rr.AAAA, port: defaultPort, nodeName: nodeName})
 			case (*dns.CNAME):
 				m.logger.Printf("[DEBUG] memberlist: Ignoring CNAME RR in TCP-first answer for '%s'", host)
 			}
@@ -348,13 +348,13 @@ func (m *Memberlist) tcpLookupIP(host string, defaultPort uint16, routeTag strin
 // resolveAddr is used to resolve the address into an address,
 // port, and error. If no port is given, use the default
 func (m *Memberlist) resolveAddr(hostStr string) ([]ipPort, error) {
-	// First peel off any leading route tag. This is optional.
-	routeTag := ""
+	// First peel off any leading node name. This is optional.
+	nodeName := ""
 	if slashIdx := strings.Index(hostStr, "/"); slashIdx >= 0 {
 		if slashIdx == 0 {
-			return nil, fmt.Errorf("empty route tag provided")
+			return nil, fmt.Errorf("empty node name provided")
 		}
-		routeTag = hostStr[0:slashIdx]
+		nodeName = hostStr[0:slashIdx]
 		hostStr = hostStr[slashIdx+1:]
 	}
 
@@ -375,14 +375,14 @@ func (m *Memberlist) resolveAddr(hostStr string) ([]ipPort, error) {
 	// IPv6 addresses.
 	if ip := net.ParseIP(host); ip != nil {
 		return []ipPort{
-			ipPort{ip: ip, port: port, routeTag: routeTag},
+			ipPort{ip: ip, port: port, nodeName: nodeName},
 		}, nil
 	}
 
 	// First try TCP so we have the best chance for the largest list of
 	// hosts to join. If this fails it's not fatal since this isn't a standard
 	// way to query DNS, and we have a fallback below.
-	ips, err := m.tcpLookupIP(host, port, routeTag)
+	ips, err := m.tcpLookupIP(host, port, nodeName)
 	if err != nil {
 		m.logger.Printf("[DEBUG] memberlist: TCP-first lookup failed for '%s', falling back to UDP: %s", hostStr, err)
 	}
@@ -399,7 +399,7 @@ func (m *Memberlist) resolveAddr(hostStr string) ([]ipPort, error) {
 	}
 	ips = make([]ipPort, 0, len(ans))
 	for _, ip := range ans {
-		ips = append(ips, ipPort{ip: ip, port: port, routeTag: routeTag})
+		ips = append(ips, ipPort{ip: ip, port: port, nodeName: nodeName})
 	}
 	return ips, nil
 }
@@ -694,7 +694,7 @@ func (m *Memberlist) ProtocolVersion() uint8 {
 	return m.config.ProtocolVersion
 }
 
-// Shutdown will stop any background maintanence of network activity
+// Shutdown will stop any background maintenance of network activity
 // for this memberlist, causing it to appear "dead". A leave message
 // will not be broadcasted prior, so the cluster being left will have
 // to detect this node's shutdown using probing. If you wish to more
