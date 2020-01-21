@@ -690,11 +690,6 @@ func (b *Builder) Build() (rt RuntimeConfig, err error) {
 		aclsEnabled = b.boolVal(c.ACL.Enabled)
 	}
 
-	// TODO(rb): fix this after figuring out which tests are super broken
-	// if primaryDatacenter == "" {
-	// 	primaryDatacenter = datacenter
-	// }
-
 	aclDC := primaryDatacenter
 	if aclsEnabled && aclDC == "" {
 		aclDC = datacenter
